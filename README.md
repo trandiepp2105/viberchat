@@ -23,31 +23,6 @@ This is a real-time chat website that allows users to communicate instantly usin
 | API Communication   | REST API + WebSocket  |
 | Data Format         | JSON                  |
 
-## 🗂 Project Structure
-
-```
-chat-app/
-│
-├── backend/
-│   ├── controllers/
-│   ├── routes/
-│   ├── models/
-│   ├── socket/
-│   └── server.js
-│
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   └── App.jsx
-│   └── public/
-│
-├── cassandra/
-│   └── schema.cql
-│
-└── README.md
-```
-
 ## 🧱 Cassandra Schema Example (schema.cql)
 
 ```sql
