@@ -1,70 +1,186 @@
-# Getting Started with Create React App
+# 💬 Realtime Chat App - Online Chat Website
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This is a real-time chat website that allows users to communicate instantly using WebSocket. Unlike traditional applications that use relational databases, this project uses **Apache Cassandra**, a distributed NoSQL database, to store chat messages efficiently and at scale.
 
-## Available Scripts
+## 🚀 Features
 
-In the project directory, you can run:
+- 👤 User registration and login
+- ⚡ Real-time messaging using WebSocket (`socket.io`)
+- 👁️ Online user presence tracking
+- 💾 Persistent chat history using Cassandra
+- 🔐 JWT-based authentication
+- 🖥️ Responsive and modern UI with React
 
-### `npm start`
+## 🛠 Technologies Used
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+| Component           | Technology            |
+| ------------------- | --------------------- |
+| Backend             | Node.js / Express     |
+| Real-time Messaging | Socket.io (WebSocket) |
+| Database            | Apache Cassandra      |
+| Authentication      | JSON Web Tokens (JWT) |
+| Frontend            | React.js              |
+| API Communication   | REST API + WebSocket  |
+| Data Format         | JSON                  |
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## 🗂 Project Structure
 
-### `npm test`
+```
+chat-app/
+│
+├── backend/
+│   ├── controllers/
+│   ├── routes/
+│   ├── models/
+│   ├── socket/
+│   └── server.js
+│
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   └── App.jsx
+│   └── public/
+│
+├── cassandra/
+│   └── schema.cql
+│
+└── README.md
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## 🧱 Cassandra Schema Example (schema.cql)
 
-### `npm run build`
+```sql
+CREATE KEYSPACE IF NOT EXISTS chatapp
+WITH REPLICATION = { 'class': 'SimpleStrategy', 'replication_factor': 1 };
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+USE chatapp;
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+CREATE TABLE IF NOT EXISTS messages (
+    conversation_id text,
+    timestamp timestamp,
+    sender_id text,
+    receiver_id text,
+    content text,
+    PRIMARY KEY ((conversation_id), timestamp)
+) WITH CLUSTERING ORDER BY (timestamp ASC);
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## 📦 Installation Guide
 
-### `npm run eject`
+### 1. Requirements
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+- Node.js >= 18.x
+- Apache Cassandra installed (or use Docker)
+- npm or yarn
+- Browser (Chrome, Firefox, etc.)
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+---
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### 2. Clone the Repository
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+```bash
+git clone https://github.com/your-username/chat-app.git
+cd chat-app
+```
 
-## Learn More
+---
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### 3. Backend Setup
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+```bash
+cd backend
+npm install
+```
 
-### Code Splitting
+Create a `.env` file inside `backend/` and add:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+```env
+PORT=5000
+JWT_SECRET=your_jwt_secret
+CASSANDRA_CONTACT_POINTS=127.0.0.1
+CASSANDRA_KEYSPACE=chatapp
+```
 
-### Analyzing the Bundle Size
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+### 4. Frontend Setup
 
-### Making a Progressive Web App
+```bash
+cd ../frontend
+npm install
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+---
 
-### Advanced Configuration
+## ▶️ Running the App
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+### Start Cassandra
 
-### Deployment
+Make sure Cassandra is running, either:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+- Directly:
+  ```bash
+  cassandra -f
+  ```
+- Or with Docker:
+  ```bash
+  docker run --name cassandra -p 9042:9042 -d cassandra
+  ```
 
-### `npm run build` fails to minify
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+### Start Backend
+
+```bash
+cd backend
+node server.js
+```
+
+---
+
+### Start Frontend
+
+```bash
+cd frontend
+npm start
+```
+
+Open your browser at [http://localhost:3000](http://localhost:3000)
+
+---
+
+## 📝 Notes
+
+- Messages are stored in Cassandra using a partition key based on `conversation_id` for efficient retrieval.
+- Real-time events (message sending, user presence, etc.) are handled by WebSocket.
+- You can customize message format or add features like typing indicator, emojis, and file sharing.
+
+---
+
+## 🧪 Testing Ideas
+
+- Open the app in two browser tabs with different users to simulate real-time conversation.
+- Monitor Cassandra data with tools like `cqlsh`.
+- Simulate large conversations to test scalability of Cassandra backend.
+
+---
+
+## 📚 References
+
+- [Cassandra Documentation](https://cassandra.apache.org/doc/latest/)
+- [Socket.IO Docs](https://socket.io/)
+- [React.js Official Site](https://reactjs.org/)
+- [Express.js](https://expressjs.com/)
+
+---
+
+## 🤝 Contributing
+
+Pull requests are welcome. For major changes, please open an issue first to discuss what you'd like to change.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License.
