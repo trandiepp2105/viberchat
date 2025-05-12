@@ -1,0 +1,72 @@
+@import "../../styles/variables.scss";
+
+.main-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  background-color: $light-color;
+
+  &__container {
+    flex: 1;
+    display: flex;
+    height: calc(100% - 60px);
+    max-width: 1440px;
+    width: 100%;
+    margin: 0 auto;
+    overflow: auto;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border-radius: $border-radius-lg;
+
+    // Make sure container adapts to smaller screens
+    @media (max-width: $breakpoint-md) {
+      border-radius: 0;
+      box-shadow: none;
+    }
+  }
+
+  &--chat {
+    .main-layout__container {
+      height: 100%;
+      overflow: hidden;
+    }
+  }
+
+  &__chat-actions {
+    position: absolute;
+    top: 70px;
+    left: 20px;
+    z-index: 10;
+    display: none;
+
+    @media (max-width: $breakpoint-sm) {
+      top: 65px;
+      left: 10px;
+    }
+  }
+
+  &__back-btn {
+    display: flex;
+    align-items: center;
+    padding: $spacing-sm $spacing-md;
+    background-color: white;
+    border-radius: $border-radius-md;
+    box-shadow: $box-shadow;
+    color: $primary-color;
+    font-weight: $font-weight-medium;
+
+    i {
+      margin-right: $spacing-xs;
+    }
+
+    &:hover {
+      background-color: rgba($primary-color, 0.05);
+    }
+
+    @media (max-width: $breakpoint-sm) {
+      padding: $spacing-xs $spacing-sm;
+      font-size: 14px;
+    }
+  }
+}

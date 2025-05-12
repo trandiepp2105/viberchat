@@ -1,0 +1,118 @@
+@import "../../styles/variables.scss";
+
+.home-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: $spacing-xl;
+  background-color: $light-color;
+
+  &__content {
+    max-width: 1200px;
+    margin: 0 auto;
+    text-align: center;
+    padding: $spacing-xl 0;
+  }
+
+  &__logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: $spacing-xl;
+
+    i {
+      font-size: 44px;
+      color: $primary-color;
+      margin-right: $spacing-sm;
+    }
+
+    h1 {
+      font-size: 44px;
+      font-weight: $font-weight-bold;
+      color: $primary-color;
+      margin: 0;
+    }
+  }
+
+  &__title {
+    font-size: 38px;
+    font-weight: $font-weight-bold;
+    margin-bottom: $spacing-md;
+    color: $text-color-dark;
+  }
+
+  &__description {
+    font-size: 20px;
+    color: rgba($text-color-dark, 0.8);
+    max-width: 800px;
+    margin: 0 auto $spacing-xl;
+    line-height: 1.6;
+  }
+  &__features {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: $spacing-xl;
+    margin-bottom: $spacing-xxl;
+  }
+
+  &__cta {
+    padding: $spacing-md $spacing-xxl;
+    font-size: 18px;
+    font-weight: $font-weight-medium;
+    border-radius: $border-radius-md;
+    box-shadow: 0 4px 12px rgba($primary-color, 0.2);
+    transition: all 0.3s ease;
+
+    &:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 15px rgba($primary-color, 0.3);
+    }
+  }
+}
+
+.feature {
+  flex: 1;
+  min-width: 300px;
+  max-width: 350px;
+  padding: $spacing-xl;
+  background-color: white;
+  border-radius: $border-radius-lg;
+  box-shadow: $box-shadow;
+  transition: $transition-default;
+
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: $box-shadow-lg;
+  }
+
+  &__icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background-color: rgba($primary-color, 0.1);
+    color: $primary-color;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto $spacing-lg;
+
+    i {
+      font-size: 36px;
+    }
+  }
+  &__title {
+    font-size: 22px;
+    font-weight: $font-weight-bold;
+    margin-bottom: $spacing-sm;
+    color: $text-color-dark;
+  }
+
+  &__description {
+    font-size: 16px;
+    color: rgba($text-color-dark, 0.8);
+    margin: 0;
+    line-height: 1.5;
+  }
+}

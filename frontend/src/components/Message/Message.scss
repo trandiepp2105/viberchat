@@ -1,0 +1,137 @@
+@import "../../styles/variables.scss";
+
+// Define missing variable
+$gray-light: #e6e8ec;
+
+.message {
+  display: flex;
+  margin-bottom: $spacing-lg;
+  position: relative;
+
+  &--mine {
+    justify-content: flex-end;
+
+    .message__bubble {
+      background-color: $primary-color;
+      color: white;
+      border-radius: $border-radius-md $border-radius-md 0 $border-radius-md;
+    }
+
+    .message__time {
+      color: rgba(white, 0.7);
+    }
+  }
+
+  &--other {
+    justify-content: flex-start;
+
+    .message__bubble {
+      background-color: white;
+      color: $text-color-dark;
+      border-radius: $border-radius-md $border-radius-md $border-radius-md 0;
+    }
+
+    .message__time {
+      color: rgba($text-color-dark, 0.6);
+    }
+  }
+
+  &__bubble {
+    max-width: 450px;
+    padding: $spacing-md $spacing-lg;
+    box-shadow: $box-shadow;
+    position: relative;
+  }
+
+  &__text {
+    margin: 0 0 $spacing-xs;
+    font-size: 15px;
+    line-height: 1.5;
+
+    &--deleted {
+      font-style: italic;
+      color: rgba($text-color-dark, 0.6);
+    }
+  }
+
+  &__time {
+    display: block;
+    font-size: 11px;
+    text-align: right;
+  }
+
+  &__edited {
+    font-size: 11px;
+    margin-left: $spacing-xs;
+    opacity: 0.7;
+  }
+
+  &__options {
+    position: absolute;
+    top: -15px;
+    right: 5px;
+    display: flex;
+    background-color: white;
+    border-radius: $border-radius-sm;
+    box-shadow: $box-shadow;
+    z-index: 10;
+  }
+
+  &__option-btn {
+    background: none;
+    border: none;
+    padding: $spacing-xs;
+    cursor: pointer;
+    color: $text-color-dark;
+    font-size: 12px;
+    transition: all 0.2s;
+
+    &:hover {
+      color: $primary-color;
+    }
+  }
+
+  &__edit {
+    width: 100%;
+
+    textarea {
+      width: 100%;
+      min-height: 60px;
+      border: 1px solid rgba($primary-color, 0.3);
+      border-radius: $border-radius-sm;
+      padding: $spacing-sm;
+      font-family: inherit;
+      font-size: 14px;
+      margin-bottom: $spacing-sm;
+      resize: vertical;
+
+      &:focus {
+        outline: none;
+        border-color: $primary-color;
+      }
+    }
+  }
+
+  &__edit-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: $spacing-sm;
+
+    button {
+      padding: $spacing-xs $spacing-sm;
+      border-radius: $border-radius-sm;
+      font-size: 12px;
+      cursor: pointer;
+      border: none;
+      &:first-child {
+        background-color: $primary-color;
+        color: white;
+      }
+
+      &:last-child {
+        background-color: #e6e8ec; /* Using a literal color value instead of undefined variable */
+        color: $text-color-dark;
+      }
+    }
+  }
+}

@@ -1,0 +1,449 @@
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../../contexts/AuthContext";
+import { useNotification } from "../../contexts/NotificationContext";
+import { userAPI } from "../../services";
+import "./Settings.scss";
+import UserProfile from "../../components/UserProfile/UserProfile";
+
+const Settings = () => {
+  const { user, updateProfile, updatePassword, logout } = useAuth();
+  const { settings: notificationSettings, updateSettings } = useNotification();
+  
+  // Profile Form State
+  const [profileForm, setProfileForm] = useState({
+    first_name: user?.first_name || "",
+    last_name: user?.last_name || "",
+    email: user?.email || "",
+    username: user?.username || "",
+    avatar: user?.avatar || "",
+    bio: user?.bio || "",
+    status: user?.status || "online",
+  });
+  
+  // Password Form State
+  const [passwordForm, setPasswordForm] = useState({
+    old_password: "",
+    new_password: "",
+    confirm_password: "",
+  });
+  
+  // Settings Form State
+  const [settingsForm, setSettingsForm] = useState({
+    dark_mode: localStorage.getItem("theme") === "dark",
+    email_notifications: notificationSettings?.email_notifications || true,
+    push_notifications: notificationSettings?.push_notifications || true,
+    message_notifications: notificationSettings?.message_notifications || true,
+    sound_enabled: notificationSettings?.sound_enabled || true,
+  });
+  
+  // State for form submission
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [activeTab, setActiveTab] = useState("profile");
+  
+  // Initialize form data when user is loaded
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        first_name: user.first_name || "",
+        last_name: user.last_name || "",
+        email: user.email || "",
+        username: user.username || "",
+        avatar: user.avatar || "",
+        bio: user.bio || "",
+        status: user.status || "online",
+      });
+    }
+  }, [user]);
+  
+  // Initialize settings from notification context
+  useEffect(() => {
+    if (notificationSettings) {
+      setSettingsForm(prevState => ({
+        ...prevState,
+        email_notifications: notificationSettings.email_notifications || true,
+        push_notifications: notificationSettings.push_notifications || true,
+        message_notifications: notificationSettings.message_notifications || true,
+        sound_enabled: notificationSettings.sound_enabled || true,
+      }));
+    }
+  }, [notificationSettings]);
+
+  // Handle profile form changes
+  const handleProfileChange = (e) => {
+    const { name, value } = e.target;
+    setProfileForm(prevForm => ({
+      ...prevForm,
+      [name]: value
+    }));
+  };
+
+  // Handle password form changes
+  const handlePasswordChange = (e) => {
+    const { name, value } = e.target;
+    setPasswordForm(prevForm => ({
+      ...prevForm,
+      [name]: value
+    }));
+  };
+
+  // Handle settings form changes
+  const handleSettingsChange = (e) => {
+    const { name, checked, type, value } = e.target;
+    setSettingsForm(prevForm => ({
+      ...prevForm,
+      [name]: type === "checkbox" ? checked : value
+    }));
+    
+    // Handle dark mode toggle immediately
+    if (name === "dark_mode") {
+      const theme = checked ? "dark" : "light";
+      document.documentElement.setAttribute("data-theme", theme);
+      localStorage.setItem("theme", theme);
+    }
+  };
+
+  // Handle profile form submission
+  const handleProfileSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    setSuccess("");
+    
+    try {
+      await userAPI.updateProfile(profileForm);
+      setSuccess("Profile updated successfully");
+    } catch (err) {
+      console.error("Profile update error:", err);
+      setError(err.response?.data?.detail || "Failed to update profile");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle password form submission
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    setSuccess("");
+    
+    // Validate passwords match
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      setError("Passwords do not match");
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      await userAPI.changePassword(
+        passwordForm.old_password,
+        passwordForm.new_password
+      );
+      
+      setSuccess("Password updated successfully");
+      
+      // Clear password fields
+      setPasswordForm({
+        old_password: "",
+        new_password: "",
+        confirm_password: "",
+      });
+    } catch (err) {
+      console.error("Password change error:", err);
+      setError(err.response?.data?.detail || "Failed to update password");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle settings form submission
+  const handleSettingsSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    setSuccess("");
+    
+    try {
+      // Update notification settings through the context
+      await updateSettings({
+        email_notifications: settingsForm.email_notifications,
+        push_notifications: settingsForm.push_notifications,
+        message_notifications: settingsForm.message_notifications,
+        sound_enabled: settingsForm.sound_enabled,
+      });
+      
+      setSuccess("Settings updated successfully");
+    } catch (err) {
+      console.error("Settings update error:", err);
+      setError("Failed to update settings");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="settings-page">
+      <div className="settings-container">
+        <div className="settings-sidebar">
+          <UserProfile
+            name={`${user?.first_name || ""} ${user?.last_name || ""}`.trim() || user?.username || "User"}
+            avatar={user?.avatar || "https://i.pravatar.cc/150?img=1"}
+            status={user?.status || "online"}
+            isLarge={true}
+          />
+          
+          <div className="settings-tabs">
+            <button
+              className={`settings-tab ${activeTab === "profile" ? "settings-tab--active" : ""}`}
+              onClick={() => setActiveTab("profile")}
+            >
+              <i className="fas fa-user"></i>
+              <span>Profile</span>
+            </button>
+            <button
+              className={`settings-tab ${activeTab === "security" ? "settings-tab--active" : ""}`}
+              onClick={() => setActiveTab("security")}
+            >
+              <i className="fas fa-lock"></i>
+              <span>Security</span>
+            </button>
+            <button
+              className={`settings-tab ${activeTab === "preferences" ? "settings-tab--active" : ""}`}
+              onClick={() => setActiveTab("preferences")}
+            >
+              <i className="fas fa-cog"></i>
+              <span>Preferences</span>
+            </button>
+          </div>
+          
+          <button className="settings-logout-btn" onClick={logout}>
+            <i className="fas fa-sign-out-alt"></i>
+            <span>Logout</span>
+          </button>
+        </div>
+        
+        <div className="settings-content">
+          {error && <div className="settings-alert settings-alert--error">{error}</div>}
+          {success && <div className="settings-alert settings-alert--success">{success}</div>}
+          
+          {activeTab === "profile" && (
+            <div className="settings-section">
+              <h2 className="settings-title">Profile Information</h2>
+              <form className="settings-form" onSubmit={handleProfileSubmit}>
+                <div className="form-group">
+                  <label htmlFor="username">Username</label>
+                  <input
+                    type="text"
+                    id="username"
+                    name="username"
+                    value={profileForm.username}
+                    onChange={handleProfileChange}
+                    disabled
+                  />
+                  <small>Username cannot be changed</small>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="first_name">First Name</label>
+                    <input
+                      type="text"
+                      id="first_name"
+                      name="first_name"
+                      value={profileForm.first_name}
+                      onChange={handleProfileChange}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="last_name">Last Name</label>
+                    <input
+                      type="text"
+                      id="last_name"
+                      name="last_name"
+                      value={profileForm.last_name}
+                      onChange={handleProfileChange}
+                    />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="email">Email</label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={profileForm.email}
+                    onChange={handleProfileChange}
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="bio">Bio</label>
+                  <textarea
+                    id="bio"
+                    name="bio"
+                    value={profileForm.bio}
+                    onChange={handleProfileChange}
+                    rows="3"
+                  ></textarea>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="status">Status</label>
+                  <select
+                    id="status"
+                    name="status"
+                    value={profileForm.status}
+                    onChange={handleProfileChange}
+                  >
+                    <option value="online">Online</option>
+                    <option value="away">Away</option>
+                    <option value="busy">Busy</option>
+                    <option value="offline">Offline</option>
+                  </select>
+                </div>
+                <button 
+                  type="submit" 
+                  className="settings-submit-btn"
+                  disabled={loading}
+                >
+                  {loading ? "Updating..." : "Update Profile"}
+                </button>
+              </form>
+            </div>
+          )}
+          
+          {activeTab === "security" && (
+            <div className="settings-section">
+              <h2 className="settings-title">Security Settings</h2>
+              <form className="settings-form" onSubmit={handlePasswordSubmit}>
+                <div className="form-group">
+                  <label htmlFor="old_password">Current Password</label>
+                  <input
+                    type="password"
+                    id="old_password"
+                    name="old_password"
+                    value={passwordForm.old_password}
+                    onChange={handlePasswordChange}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="new_password">New Password</label>
+                  <input
+                    type="password"
+                    id="new_password"
+                    name="new_password"
+                    value={passwordForm.new_password}
+                    onChange={handlePasswordChange}
+                    required
+                    minLength="8"
+                  />
+                  <small>Password must be at least 8 characters long</small>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="confirm_password">Confirm New Password</label>
+                  <input
+                    type="password"
+                    id="confirm_password"
+                    name="confirm_password"
+                    value={passwordForm.confirm_password}
+                    onChange={handlePasswordChange}
+                    required
+                  />
+                </div>
+                <button 
+                  type="submit" 
+                  className="settings-submit-btn"
+                  disabled={loading}
+                >
+                  {loading ? "Updating..." : "Change Password"}
+                </button>
+              </form>
+            </div>
+          )}
+          
+          {activeTab === "preferences" && (
+            <div className="settings-section">
+              <h2 className="settings-title">Preferences</h2>
+              <form className="settings-form" onSubmit={handleSettingsSubmit}>
+                <div className="form-group form-group--switch">
+                  <label htmlFor="dark_mode">Dark Mode</label>
+                  <div className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      id="dark_mode"
+                      name="dark_mode"
+                      checked={settingsForm.dark_mode}
+                      onChange={handleSettingsChange}
+                    />
+                    <label htmlFor="dark_mode"></label>
+                  </div>
+                </div>
+                <div className="form-group form-group--switch">
+                  <label htmlFor="push_notifications">Browser Notifications</label>
+                  <div className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      id="push_notifications"
+                      name="push_notifications"
+                      checked={settingsForm.push_notifications}
+                      onChange={handleSettingsChange}
+                    />
+                    <label htmlFor="push_notifications"></label>
+                  </div>
+                </div>
+                <div className="form-group form-group--switch">
+                  <label htmlFor="email_notifications">Email Notifications</label>
+                  <div className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      id="email_notifications"
+                      name="email_notifications"
+                      checked={settingsForm.email_notifications}
+                      onChange={handleSettingsChange}
+                    />
+                    <label htmlFor="email_notifications"></label>
+                  </div>
+                </div>
+                <div className="form-group form-group--switch">
+                  <label htmlFor="message_notifications">Message Notifications</label>
+                  <div className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      id="message_notifications"
+                      name="message_notifications"
+                      checked={settingsForm.message_notifications}
+                      onChange={handleSettingsChange}
+                    />
+                    <label htmlFor="message_notifications"></label>
+                  </div>
+                </div>
+                <div className="form-group form-group--switch">
+                  <label htmlFor="sound_enabled">Sound Effects</label>
+                  <div className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      id="sound_enabled"
+                      name="sound_enabled"
+                      checked={settingsForm.sound_enabled}
+                      onChange={handleSettingsChange}
+                    />
+                    <label htmlFor="sound_enabled"></label>
+                  </div>
+                </div>
+                <button 
+                  type="submit" 
+                  className="settings-submit-btn"
+                  disabled={loading}
+                >
+                  {loading ? "Saving..." : "Save Preferences"}
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Settings;

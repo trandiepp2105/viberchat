@@ -1,0 +1,124 @@
+import api from "./index";
+
+// Chat API
+const chatAPI = {
+  /**
+   * Get all chat sessions for the current user
+   * @returns {Promise} - Promise with chat sessions
+   */
+  getChats: () => api.get("/chats/sessions/"),
+
+  /**
+   * Get a specific chat by ID
+   * @param {string} chatId - ID of the chat to get
+   * @returns {Promise} - Promise with chat details
+   */
+  getChat: (chatId) => api.get(`/chats/sessions/${chatId}/`)
+  /**
+   * Create a new chat
+   * @param {Array} participantIds - IDs of chat participants
+   * @param {boolean} isGroupChat - Whether this is a group chat
+   * @param {string} name - Chat name (for group chats)
+   * @param {string} initialMessage - First message for the chat
+   * @returns {Promise} - Promise with the created chat
+   */,
+  createChat: (
+    participantIds,
+    isGroupChat = false,
+    name = "",
+    initialMessage = ""
+  ) => {
+    // Prepare the payload
+    const payload = {
+      participant_ids: participantIds,
+      is_group_chat: isGroupChat,
+      name: name,
+    };
+
+    // Only add initial_message if it's not empty
+    if (initialMessage && initialMessage.trim() !== "") {
+      payload.initial_message = initialMessage;
+    }
+
+    console.log("Creating chat with payload:", payload);
+
+    return api.post("/chats/sessions/", payload);
+  },
+
+  /**
+   * Get messages for a chat
+   * @param {string} chatId - ID of the chat
+   * @param {number} limit - Maximum number of messages to retrieve
+   * @param {string} lastMessageId - ID of the last message for pagination
+   * @returns {Promise} - Promise with chat messages
+   */
+  getMessages: (chatId, limit = 50, lastMessageId = null) => {
+    let url = `/chats/sessions/${chatId}/messages/?limit=${limit}`;
+    if (lastMessageId) {
+      url += `&last_message_id=${lastMessageId}`;
+    }
+    return api.get(url);
+  },
+  /**
+   * Send a message in a chat
+   * @param {string} chatId - ID of the chat
+   * @param {string} text - Message text
+   * @param {Array} attachments - File attachments
+   * @returns {Promise} - Promise with the sent message
+   */
+  sendMessage: (chatId, text, attachments = []) => {
+    const formData = new FormData();
+    formData.append("text", text);
+
+    if (attachments.length > 0) {
+      attachments.forEach((file) => {
+        formData.append("attachments", file);
+      });
+    }
+
+    return api.post(`/chats/sessions/${chatId}/send_message/`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+
+  /**
+   * Edit a message
+   * @param {string} chatId - ID of the chat
+   * @param {string} messageId - ID of the message to edit
+   * @param {string} newText - New message text
+   * @returns {Promise} - Promise with the edited message
+   */
+  editMessage: (chatId, messageId, newText) => {
+    return api.post(`/chats/sessions/${chatId}/edit-message/${messageId}/`, {
+      text: newText,
+    });
+  },
+
+  /**
+   * Delete a message
+   * @param {string} chatId - ID of the chat
+   * @param {string} messageId - ID of the message to delete
+   * @returns {Promise} - Promise with deletion result
+   */
+  deleteMessage: (chatId, messageId) => {
+    return api.post(
+      `/chats/sessions/${chatId}/delete-message/${messageId}/`,
+      {}
+    );
+  },
+
+  /**
+   * Mark messages as read
+   * @param {string} chatId - ID of the chat
+   * @param {Array} messageIds - IDs of messages to mark as read
+   * @returns {Promise} - Promise with mark as read result
+   */
+  markMessagesAsRead: (chatId, messageIds) =>
+    api.post(`/chats/sessions/${chatId}/mark_read/`, {
+      message_ids: messageIds,
+    }),
+};
+
+export default chatAPI;

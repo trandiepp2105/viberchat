@@ -1,0 +1,81 @@
+// Color variables
+$primary-color: #7c5dfa;
+$primary-color-light: #9277ff;
+$primary-color-dark: #5e45d9;
+$secondary-color: #1e2139;
+$dark-color: #141625;
+$light-color: #f8f8fb;
+$text-color: #dfe3fa;
+$text-color-dark: #0c0e16;
+$success-color: #33d69f;
+$warning-color: #ff8f00;
+$danger-color: #ec5757;
+
+// Font variables
+$font-family-primary: "Poppins", sans-serif;
+$font-size-base: 16px;
+$font-weight-regular: 400;
+$font-weight-medium: 500;
+$font-weight-bold: 700;
+
+// Spacing variables
+$spacing-xxs: 4px;
+$spacing-xs: 8px;
+$spacing-sm: 12px;
+$spacing-md: 16px;
+$spacing-lg: 24px;
+$spacing-xl: 32px;
+$spacing-xxl: 48px;
+
+// Border radius
+$border-radius-sm: 4px;
+$border-radius-md: 8px;
+$border-radius-lg: 12px;
+
+// Box shadow
+$box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+$box-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+
+// Transition
+$transition-default: all 0.3s ease;
+
+// Breakpoints
+$breakpoint-xs: 480px;
+$breakpoint-sm: 768px;
+$breakpoint-md: 992px;
+$breakpoint-lg: 1200px;
+
+// CSS Variables for theme
+:root {
+  // Color scheme
+  --primary: #{$primary-color};
+  --primary-light: #{$primary-color-light};
+  --primary-dark: #{$primary-color-dark};
+  --primary-rgb: 124, 93, 250;
+
+  --success: #{$success-color};
+  --success-rgb: 51, 214, 159;
+  --warning: #{$warning-color};
+  --error: #{$danger-color};
+  --error-rgb: 236, 87, 87;
+
+  // Light theme (default)
+  --bg-color: #f5f7fb;
+  --card-bg: #ffffff;
+  --input-bg: #f9fafc;
+  --border-color: #e6e8ec;
+  --text-primary: #1a1d26;
+  --text-secondary: #707790;
+  --text-tertiary: #a9afc1;
+
+  // Dark theme
+  &.dark-theme {
+    --bg-color: #{$dark-color};
+    --card-bg: #{$secondary-color};
+    --input-bg: #252a41;
+    --border-color: #313a52;
+    --text-primary: #ffffff;
+    --text-secondary: #{$text-color};
+    --text-tertiary: #8e94a7;
+  }
+}

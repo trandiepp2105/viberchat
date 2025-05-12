@@ -1,0 +1,64 @@
+import React from "react";
+import "./Message.scss";
+
+const Message = ({ text, isMe, timestamp, attachments = [], isRead }) => {
+  const formattedTime = typeof timestamp === 'string' 
+    ? new Date(timestamp).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : timestamp;
+
+  return (
+    <div className={`message ${isMe ? "message--mine" : "message--other"}`}>
+      <div className="message__bubble">
+        {text && <p className="message__text">{text}</p>}
+        
+        {attachments && attachments.length > 0 && (
+          <div className="message__attachments">
+            {attachments.map((attachment, index) => (
+              <div key={index} className="message__attachment">
+                {attachment.file_type?.includes('image') ? (
+                  <img 
+                    src={attachment.file_url || URL.createObjectURL(attachment)} 
+                    alt="Attachment" 
+                    className="message__attachment-image"
+                    onClick={() => window.open(attachment.file_url, '_blank')}
+                  />
+                ) : (
+                  <div className="message__attachment-file">
+                    <i className="fas fa-file"></i>
+                    <span>{attachment.file_name || attachment.name}</span>
+                    <a 
+                      href={attachment.file_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="message__attachment-download"
+                    >
+                      <i className="fas fa-download"></i>
+                    </a>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        
+        <div className="message__footer">
+          <span className="message__time">{formattedTime}</span>
+          {isMe && (
+            <span className={`message__status ${isRead ? 'message__status--read' : ''}`}>
+              {isRead ? (
+                <i className="fas fa-check-double"></i>
+              ) : (
+                <i className="fas fa-check"></i>
+              )}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Message;

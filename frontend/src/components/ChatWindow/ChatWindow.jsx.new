@@ -1,0 +1,161 @@
+import React, { useRef, useEffect, useState } from "react";
+import { useAuth } from "../../contexts/AuthContext";
+import "./ChatWindow.scss";
+import Header from "../Header/Header";
+import Message from "../Message/Message";
+import MessageInput from "../MessageInput/MessageInput";
+
+const ChatWindow = ({ selectedChat, messages, onSendMessage, loading, error }) => {
+  const { user } = useAuth();
+  const messagesEndRef = useRef(null);
+  const [typingUsers, setTypingUsers] = useState([]);
+  const [isTyping, setIsTyping] = useState(false);
+  const [typingTimeout, setTypingTimeout] = useState(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleSendMessage = (text, attachments = []) => {
+    if (text.trim() === "" && attachments.length === 0) return;
+    onSendMessage(text, attachments);
+  };
+
+  const handleTyping = (isUserTyping) => {
+    // Send typing indicator to websocket
+    if (isTyping !== isUserTyping) {
+      setIsTyping(isUserTyping);
+      
+      // Implement typing indicator logic here
+      // This would use the WebSocket connection to notify other users
+    }
+  };
+
+  // Get participant names for group chats or the other user for direct chats
+  const getChatTitle = () => {
+    if (!selectedChat) return "";
+    
+    if (selectedChat.name) return selectedChat.name;
+    
+    if (selectedChat.is_group_chat) {
+      return selectedChat.participants
+        .map(p => p.username)
+        .join(", ");
+    }
+    
+    // For direct chats, show the other user's name
+    const otherUser = selectedChat.participants.find(p => p.id !== user?.id);
+    return otherUser ? otherUser.username : "Chat";
+  };
+
+  // Format messages for display
+  const formatMessages = (msgs) => {
+    if (!msgs || !Array.isArray(msgs)) return [];
+    
+    return msgs.map(msg => ({
+      id: msg.id,
+      text: msg.text,
+      isMe: msg.sender?.id === user?.id,
+      timestamp: msg.timestamp || msg.created_at,
+      attachments: msg.attachments || [],
+      read: msg.is_read
+    }));
+  };
+
+  // Group messages by date
+  const groupMessagesByDate = (msgs) => {
+    const groups = {};
+    
+    msgs.forEach(msg => {
+      const date = new Date(msg.timestamp).toLocaleDateString();
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(msg);
+    });
+    
+    return groups;
+  };
+
+  const formattedMessages = formatMessages(messages);
+  const messageGroups = groupMessagesByDate(formattedMessages);
+
+  return (
+    <div className="chat-window">
+      {loading ? (
+        <div className="chat-window__loading">
+          <div className="spinner"></div>
+          <p>Loading chat...</p>
+        </div>
+      ) : error ? (
+        <div className="chat-window__error">
+          <i className="fas fa-exclamation-circle"></i>
+          <p>{error}</p>
+        </div>
+      ) : selectedChat ? (
+        <>
+          <Header
+            title={getChatTitle()}
+            subtitle={
+              selectedChat.is_group_chat 
+                ? `${selectedChat.participants.length} members` 
+                : "Online"
+            }
+            avatar={selectedChat.avatar || "https://i.pravatar.cc/150?img=8"}
+          />
+
+          <div className="chat-window__messages">
+            {Object.entries(messageGroups).map(([date, msgs]) => (
+              <React.Fragment key={date}>
+                <div className="chat-window__date-separator">
+                  <span>{date === new Date().toLocaleDateString() ? "Today" : date}</span>
+                </div>
+                {msgs.map((message) => (
+                  <Message
+                    key={message.id}
+                    text={message.text}
+                    isMe={message.isMe}
+                    timestamp={new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    attachments={message.attachments}
+                    isRead={message.read}
+                  />
+                ))}
+              </React.Fragment>
+            ))}
+            {typingUsers.length > 0 && (
+              <div className="chat-window__typing">
+                <div className="typing-indicator">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+                <p>{typingUsers.join(", ")} is typing...</p>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          <MessageInput 
+            onSendMessage={handleSendMessage} 
+            onTyping={handleTyping}
+            disabled={!selectedChat}
+          />
+        </>
+      ) : (
+        <div className="chat-window__empty">
+          <div className="chat-window__empty-content">
+            <i className="fas fa-comments chat-window__empty-icon"></i>
+            <h2>Select a conversation</h2>
+            <p>Choose a contact from the list to start chatting</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ChatWindow;

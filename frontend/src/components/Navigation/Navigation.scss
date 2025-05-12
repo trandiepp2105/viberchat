@@ -1,0 +1,136 @@
+@import "../../styles/variables.scss";
+
+.navigation {
+  display: flex;
+  align-items: center;
+  padding: 0 $spacing-xl;
+  height: 60px;
+  background-color: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 100;
+
+  &__logo {
+    margin-right: auto;
+
+    a {
+      display: flex;
+      align-items: center;
+      color: $primary-color;
+      font-weight: $font-weight-bold;
+      font-size: 20px;
+
+      i {
+        margin-right: $spacing-xs;
+        font-size: 24px;
+      }
+    }
+  }
+
+  &__profile {
+    position: relative;
+  }
+  &__avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid $primary-color;
+    transition: $transition-default;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    &:hover {
+      transform: scale(1.05);
+      border-color: $primary-color-dark;
+    }
+  }
+
+  &__profile-menu {
+    position: absolute;
+    top: 50px;
+    right: 0;
+    width: 280px;
+    background-color: white;
+    border-radius: $border-radius-md;
+    box-shadow: $box-shadow-lg;
+    padding: $spacing-md;
+    z-index: 10;
+  }
+
+  &__profile-info {
+    display: flex;
+    align-items: center;
+    padding-bottom: $spacing-md;
+    border-bottom: 1px solid rgba($text-color-dark, 0.1);
+    margin-bottom: $spacing-md;
+
+    img {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      margin-right: $spacing-md;
+      object-fit: cover;
+    }
+
+    h4 {
+      margin: 0;
+      font-weight: $font-weight-bold;
+      color: $text-color-dark;
+    }
+
+    p {
+      margin: $spacing-xxs 0 0;
+      font-size: 14px;
+      color: rgba($text-color-dark, 0.7);
+    }
+  }
+
+  &__profile-actions {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__profile-link {
+    display: flex;
+    align-items: center;
+    padding: $spacing-sm;
+    color: $text-color-dark;
+    transition: $transition-default;
+    border-radius: $border-radius-sm;
+    background: none;
+    border: none;
+    text-align: left;
+    font-size: 16px;
+    cursor: pointer;
+    width: 100%;
+    margin-bottom: $spacing-xs;
+
+    i {
+      width: 20px;
+      margin-right: $spacing-md;
+      color: rgba($text-color-dark, 0.7);
+    }
+
+    &:hover {
+      background-color: rgba($primary-color, 0.1);
+    }
+
+    &:last-child {
+      color: $danger-color;
+
+      i {
+        color: $danger-color;
+      }
+
+      &:hover {
+        background-color: rgba($danger-color, 0.1);
+      }
+    }
+  }
+}

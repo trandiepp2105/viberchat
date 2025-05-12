@@ -1,0 +1,208 @@
+version: "3.8"
+
+services:
+  viberchat_mysql:
+    image: mysql:8.0
+    container_name: viberchat_mysql
+    restart: always
+    volumes:
+      - mysql_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3306:3306"
+    networks:
+      - viberchat_network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "root",
+          "-p${MYSQL_ROOT_PASSWORD}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  viberchat_cassandra:
+    image: cassandra:4.1
+    container_name: viberchat_cassandra
+    restart: always
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+    ports:
+      - "9042:9042"
+    environment:
+      - CASSANDRA_CLUSTER_NAME=ViberChatCluster
+    networks:
+      - viberchat_network
+    healthcheck:
+      test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  viberchat_redis:
+    image: redis:7.0-alpine
+    container_name: viberchat_redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - viberchat_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  viberchat_backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: viberchat_backend
+    restart: always
+    volumes:
+      - ./backend:/backend
+      - /backend_static_volume:/backend/backendstatic
+      - /backend_media_volume:/backend/media
+    ports:
+      - "8000:8000"
+    depends_on:
+      - viberchat_mysql
+      - viberchat_cassandra
+      - viberchat_redis
+    environment:
+      - DEBUG=${DEBUG}
+      - SECRET_KEY=${SECRET_KEY}
+      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
+      - DB_HOST=viberchat_mysql
+      - DB_NAME=${MYSQL_DATABASE}
+      - DB_USER=${MYSQL_USER}
+      - DB_PASSWORD=${MYSQL_PASSWORD}
+      - CASSANDRA_HOST=viberchat_cassandra
+      - REDIS_HOST=viberchat_redis
+      - EMAIL_HOST=${EMAIL_HOST}
+      - EMAIL_PORT=${EMAIL_PORT}
+      - EMAIL_USE_TLS=${EMAIL_USE_TLS}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
+      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
+    networks:
+      - viberchat_network
+  viberchat_daphne:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: viberchat_daphne
+    restart: always
+    command: daphne -b 0.0.0.0 -p 8001 core.asgi:application
+    volumes:
+      - ./backend:/backend
+      - /backend_static_volume:/backend/backendstatic
+      - /backend_media_volume:/backend/media
+    ports:
+      - "8001:8001"
+    depends_on:
+      - viberchat_mysql
+      - viberchat_cassandra
+      - viberchat_redis
+    environment:
+      - DEBUG=${DEBUG}
+      - SECRET_KEY=${SECRET_KEY}
+      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
+      - DB_HOST=viberchat_mysql
+      - DB_NAME=${MYSQL_DATABASE}
+      - DB_USER=${MYSQL_USER}
+      - DB_PASSWORD=${MYSQL_PASSWORD}
+      - CASSANDRA_HOST=viberchat_cassandra
+      - REDIS_HOST=viberchat_redis
+      - EMAIL_HOST=${EMAIL_HOST}
+      - EMAIL_PORT=${EMAIL_PORT}
+      - EMAIL_USE_TLS=${EMAIL_USE_TLS}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
+      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
+    networks:
+      - viberchat_network
+  viberchat_celery:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: viberchat_celery
+    restart: always
+    command: celery -A core worker -l info
+    volumes:
+      - ./backend:/backend
+    depends_on:
+      - viberchat_backend
+      - viberchat_redis
+    environment:
+      - DEBUG=${DEBUG}
+      - SECRET_KEY=${SECRET_KEY}
+      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
+      - DB_HOST=viberchat_mysql
+      - DB_NAME=${MYSQL_DATABASE}
+      - DB_USER=${MYSQL_USER}
+      - DB_PASSWORD=${MYSQL_PASSWORD}
+      - CASSANDRA_HOST=viberchat_cassandra
+      - REDIS_HOST=viberchat_redis
+      - EMAIL_HOST=${EMAIL_HOST}
+      - EMAIL_PORT=${EMAIL_PORT}
+      - EMAIL_USE_TLS=${EMAIL_USE_TLS}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
+      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
+    networks:
+      - viberchat_network
+
+  viberchat_celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: viberchat_celery_beat
+    restart: always
+    command: celery -A core beat -l info
+    volumes:
+      - ./backend:/backend
+    depends_on:
+      - viberchat_backend
+      - viberchat_redis
+    environment:
+      - DEBUG=${DEBUG}
+      - SECRET_KEY=${SECRET_KEY}
+      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
+      - DB_HOST=viberchat_mysql
+      - DB_NAME=${MYSQL_DATABASE}
+      - DB_USER=${MYSQL_USER}
+      - DB_PASSWORD=${MYSQL_PASSWORD}
+      - CASSANDRA_HOST=viberchat_cassandra
+      - REDIS_HOST=viberchat_redis
+      - EMAIL_HOST=${EMAIL_HOST}
+      - EMAIL_PORT=${EMAIL_PORT}
+      - EMAIL_USE_TLS=${EMAIL_USE_TLS}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
+      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
+    networks:
+      - viberchat_network
+
+networks:
+  viberchat_network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  cassandra_data:
+  redis_data:
+  # backend_static_volume:
+  # backend_media_volume:

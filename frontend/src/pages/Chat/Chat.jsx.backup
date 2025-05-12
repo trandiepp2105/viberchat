@@ -1,0 +1,169 @@
+import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
+import "./Chat.scss";
+import Sidebar from "../../components/Sidebar/Sidebar";
+import ChatWindow from "../../components/ChatWindow/ChatWindow";
+import { chatAPI, userAPI, WebSocketService } from "../../services";
+
+const Chat = () => {
+  const { user } = useAuth();
+  const { chatId } = useParams();
+  const [selectedChatId, setSelectedChatId] = useState(chatId || null);
+  const [chats, setChats] = useState([]);
+  const [contacts, setContacts] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  // WebSocket instance for real-time communication
+  const [webSocket, setWebSocket] = useState(null);
+
+  // Track user typing state
+  const [isTyping, setIsTyping] = useState(false);
+  const [otherUserTyping, setOtherUserTyping] = useState(false);
+  const typingTimeoutRef = useRef(null);
+
+  // Fetch chats and contacts when component mounts
+  useEffect(() => {
+    const fetchChatsAndContacts = async () => {
+      try {
+        setLoading(true);
+        // Fetch chats
+        const chatsResponse = await chatAPI.getChats();
+        setChats(chatsResponse.data);
+
+        // Fetch contacts
+        const contactsResponse = await userAPI.getContacts();
+        setContacts(contactsResponse.data);
+
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching data:", err);
+        setError("Failed to load chats and contacts");
+        setLoading(false);
+      }
+    };
+
+    fetchChatsAndContacts();
+  }, []);
+
+  // Fetch messages when selected chat changes
+  useEffect(() => {
+    if (!selectedChatId) return;
+
+    const fetchMessages = async () => {
+      try {
+        setLoading(true);
+        const response = await chatAPI.getMessages(selectedChatId);
+        setMessages(response.data);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching messages:", err);
+        setError("Failed to load messages");
+        setLoading(false);
+      }
+    };
+
+    fetchMessages();
+
+    // Setup WebSocket connection
+    const ws = new WebSocketService();
+    ws.connect(selectedChatId)
+      .on("message", handleNewMessage)
+      .on("typing", handleTypingIndicator)
+      .on("read", handleReadReceipt);
+
+    setWebSocket(ws);
+
+    // Cleanup WebSocket on unmount or when chat changes
+    return () => {
+      if (ws) {
+        ws.disconnect();
+      }
+    };
+  }, [selectedChatId]);
+
+  // Handle new message from WebSocket
+  const handleNewMessage = (data) => {
+    setMessages((prevMessages) => [...prevMessages, data.message]);
+  };
+
+  // Handle typing indicator
+  const handleTypingIndicator = (data) => {
+    // Update UI to show typing indicator
+    setOtherUserTyping(data.is_typing);
+  };
+
+  // Handle read receipt
+  const handleReadReceipt = (data) => {
+    // Update message read status
+    console.log("Messages marked as read:", data);
+  };
+
+  // Handle input changes to detect typing
+  const handleInputChange = (text) => {
+    if (!webSocket) return;
+    
+    // When text is present and user wasn't typing before
+    if (text && !isTyping) {
+      setIsTyping(true);
+      webSocket.sendTypingIndicator(true);
+    } 
+    // When text is empty and user was typing before
+    else if (!text && isTyping) {
+      setIsTyping(false);
+      webSocket.sendTypingIndicator(false);
+    }
+  };
+
+  // Handle sending a new message
+  const handleSendMessage = async (text) => {
+    if (!selectedChatId || !text.trim()) return;
+
+    try {
+      // Send message via API
+      await chatAPI.sendMessage(selectedChatId, text);
+
+      // Also send through WebSocket if available for immediate UI update
+      if (webSocket && webSocket.socket?.readyState === WebSocket.OPEN) {
+        webSocket.sendMessage(text);
+      }
+      // Message will be added through the WebSocket handler
+    } catch (err) {
+      console.error("Error sending message:", err);
+      setError("Failed to send message");
+    }
+  };
+
+  // Handle chat selection from sidebar
+  const handleSelectChat = async (chatId) => {
+    setSelectedChatId(chatId);
+  };
+
+  // Select a formatted chat to display in the ChatWindow
+  const selectedChat = selectedChatId
+    ? chats.find((chat) => chat.id === selectedChatId)
+    : null;
+
+  return (
+    <div className="chat-page">
+      <Sidebar
+        chats={chats}
+        contacts={contacts}
+        onSelectChat={handleSelectChat}
+        selectedChatId={selectedChatId}
+      />
+      <ChatWindow
+        selectedChat={selectedChat}
+        messages={messages}
+        onSendMessage={handleSendMessage}
+        onInputChange={handleInputChange}
+        isTyping={isTyping}
+        otherUserTyping={otherUserTyping}
+        loading={loading}
+        error={error}
+      />
+    </div>
+  );
+};
+
+export default Chat;

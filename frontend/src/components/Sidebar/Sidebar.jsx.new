@@ -1,0 +1,226 @@
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../../contexts/AuthContext";
+import "./Sidebar.scss";
+import UserProfile from "../UserProfile/UserProfile";
+import Contact from "../Contact/Contact";
+import { userAPI } from "../../services";
+
+const Sidebar = ({ chats, contacts, onSelectChat, selectedChatId }) => {
+  const { user } = useAuth();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState("chats");
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Handle search input changes
+  const handleSearchChange = async (e) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+    
+    if (query.length > 2) {
+      setIsSearching(true);
+      try {
+        const response = await userAPI.searchUsers(query);
+        setSearchResults(response.data);
+      } catch (error) {
+        console.error("Search error:", error);
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    } else {
+      setSearchResults([]);
+    }
+  };
+
+  // Filter chats based on search query
+  const filteredChats = chats.filter((chat) => 
+    (chat.name?.toLowerCase() || "").includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <div className="sidebar">
+      <div className="sidebar__header">
+        <UserProfile
+          name={user?.username || "Loading..."}
+          avatar={user?.avatar || "https://i.pravatar.cc/150?img=1"}
+          status="online"
+        />
+      </div>
+
+      <div className="sidebar__search">
+        <div className="search-input">
+          <i className="fas fa-search search-input__icon"></i>
+          <input
+            type="text"
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={handleSearchChange}
+            className="search-input__field"
+          />
+        </div>
+      </div>
+
+      <div className="sidebar__tabs">
+        <button
+          className={`sidebar__tab ${
+            activeTab === "chats" ? "sidebar__tab--active" : ""
+          }`}
+          onClick={() => setActiveTab("chats")}
+        >
+          Chats
+        </button>
+        <button
+          className={`sidebar__tab ${
+            activeTab === "contacts" ? "sidebar__tab--active" : ""
+          }`}
+          onClick={() => setActiveTab("contacts")}
+        >
+          Contacts
+        </button>
+      </div>
+
+      <div className="sidebar__content">
+        {isSearching ? (
+          <div className="sidebar__loading">Searching...</div>
+        ) : searchQuery.length > 2 && searchResults.length > 0 ? (
+          <div className="sidebar__search-results">
+            <h3>Search Results</h3>
+            {searchResults.map((user) => (
+              <div
+                key={user.id}
+                className="sidebar__contact-item"
+                onClick={() => handleAddContact(user.id)}
+              >
+                <div className="sidebar__contact-avatar">
+                  <img src={user.avatar || "https://i.pravatar.cc/150?img=8"} alt={user.username} />
+                </div>
+                <div className="sidebar__contact-info">
+                  <h3 className="sidebar__contact-name">{user.username}</h3>
+                  <p className="sidebar__contact-message">
+                    {`${user.first_name || ''} ${user.last_name || ''}`.trim()}
+                  </p>
+                </div>
+                <div className="sidebar__contact-meta">
+                  <button className="sidebar__add-contact-btn">
+                    <i className="fas fa-plus"></i>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : activeTab === "chats" ? (
+          <div className="sidebar__contacts">
+            {filteredChats.length > 0 ? (
+              filteredChats.map((chat) => (
+                <div
+                  key={chat.id}
+                  className={`sidebar__contact-item ${selectedChatId === chat.id ? 'sidebar__contact-item--active' : ''}`}
+                  onClick={() => onSelectChat(chat.id)}
+                >
+                  <div className="sidebar__contact-avatar">
+                    <img src={chat.avatar || "https://i.pravatar.cc/150?img=8"} alt={chat.name || "Group Chat"} />
+                  </div>
+                  <div className="sidebar__contact-info">
+                    <h3 className="sidebar__contact-name">
+                      {chat.name || (chat.is_group_chat 
+                        ? "Group Chat" 
+                        : chat.participants?.map(p => p.username).join(", "))}
+                    </h3>
+                    <p className="sidebar__contact-message">
+                      {chat.last_message?.text || "No messages yet"}
+                    </p>
+                  </div>
+                  <div className="sidebar__contact-meta">
+                    <span className="sidebar__contact-time">
+                      {chat.last_message?.timestamp 
+                        ? new Date(chat.last_message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                        : new Date(chat.created_at).toLocaleDateString()}
+                    </span>
+                    {chat.unread_count > 0 && (
+                      <span className="sidebar__contact-badge">
+                        {chat.unread_count}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="sidebar__no-results">No chats found</div>
+            )}
+          </div>
+        ) : (
+          <div className="sidebar__contacts">
+            {contacts.length > 0 ? (
+              contacts.map((contact) => (
+                <div
+                  key={contact.id}
+                  className="sidebar__contact-item"
+                  onClick={() => handleStartChat(contact.id)}
+                >
+                  <div className="sidebar__contact-avatar">
+                    <img src={contact.avatar || "https://i.pravatar.cc/150?img=8"} alt={contact.username} />
+                    {contact.status === "online" && (
+                      <span className="status-indicator"></span>
+                    )}
+                  </div>
+                  <div className="sidebar__contact-info">
+                    <h3 className="sidebar__contact-name">{contact.username}</h3>
+                    <p className="sidebar__contact-message">
+                      {`${contact.first_name || ''} ${contact.last_name || ''}`.trim() || "Contact"}
+                    </p>
+                  </div>
+                  <div className="sidebar__contact-meta">
+                    <button className="sidebar__start-chat-btn">
+                      <i className="fas fa-comment"></i>
+                    </button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="sidebar__no-results">No contacts found</div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="sidebar__footer">
+        <button className="sidebar__new-chat-btn" onClick={handleNewChat}>
+          <i className="fas fa-plus"></i>
+          <span>New Chat</span>
+        </button>
+      </div>
+    </div>
+  );
+
+  // Handle starting a new chat with a contact
+  async function handleStartChat(contactId) {
+    try {
+      const response = await chatAPI.createChat([contactId]);
+      onSelectChat(response.data.id);
+    } catch (error) {
+      console.error("Error creating chat:", error);
+    }
+  }
+
+  // Handle adding a new contact from search results
+  async function handleAddContact(userId) {
+    try {
+      await userAPI.addContact(userId);
+      // Refresh contacts list
+      const contactsResponse = await userAPI.getContacts();
+      setContacts(contactsResponse.data);
+    } catch (error) {
+      console.error("Error adding contact:", error);
+    }
+  }
+
+  // Handle creating a new chat (group or individual)
+  function handleNewChat() {
+    // This would open a dialog to create a new chat
+    // For now, let's just switch to the contacts tab
+    setActiveTab("contacts");
+  }
+};
+
+export default Sidebar;

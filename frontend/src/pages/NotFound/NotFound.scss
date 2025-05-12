@@ -1,0 +1,57 @@
+@import "../../styles/variables.scss";
+
+.not-found {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: $spacing-xl;
+  background-color: $light-color;
+
+  &__content {
+    max-width: 700px;
+    text-align: center;
+  }
+
+  &__icon {
+    font-size: 90px;
+    color: $primary-color;
+    margin-bottom: $spacing-md;
+  }
+
+  &__title {
+    font-size: 160px;
+    font-weight: $font-weight-bold;
+    color: $primary-color;
+    line-height: 1;
+    margin: 0 0 $spacing-sm;
+  }
+
+  &__subtitle {
+    font-size: 38px;
+    font-weight: $font-weight-bold;
+    margin-bottom: $spacing-md;
+    color: $text-color-dark;
+  }
+
+  &__message {
+    font-size: 20px;
+    color: rgba($text-color-dark, 0.8);
+    margin-bottom: $spacing-xl;
+    line-height: 1.5;
+  }
+
+  &__link {
+    padding: $spacing-md $spacing-xxl;
+    font-size: 18px;
+    font-weight: $font-weight-medium;
+    border-radius: $border-radius-md;
+    box-shadow: 0 4px 12px rgba($primary-color, 0.2);
+    transition: all 0.3s ease;
+
+    &:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 15px rgba($primary-color, 0.3);
+    }
+  }
+}

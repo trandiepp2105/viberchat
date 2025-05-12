@@ -1,0 +1,295 @@
+import React, { createContext, useState, useEffect, useContext, useCallback } from "react";
+import { chatAPI, WebSocketService } from "../services";
+import { useAuth } from "./AuthContext";
+
+// Create the ChatContext
+const ChatContext = createContext(null);
+
+// ChatProvider component
+export const ChatProvider = ({ children }) => {
+  const { isAuthenticated, user } = useAuth();
+  const [chats, setChats] = useState([]);
+  const [activeChat, setActiveChat] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [socket, setSocket] = useState(null);
+  const [typingUsers, setTypingUsers] = useState({});
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  const [lastMessageId, setLastMessageId] = useState(null);
+  const [messagesPage, setMessagesPage] = useState(1);
+  const [messagesLimit] = useState(50);
+
+  // Fetch all chat sessions
+  const fetchChats = useCallback(async () => {
+    if (!isAuthenticated) return;
+    
+    try {
+      setLoading(true);
+      const response = await chatAPI.getChats();
+      setChats(response.data);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching chats:", err);
+      setError("Failed to load chats");
+    } finally {
+      setLoading(false);
+    }
+  }, [isAuthenticated]);
+
+  // Fetch messages for the active chat
+  const fetchMessages = useCallback(async (chatId, fetchNew = false, loadMore = false) => {
+    if (!chatId) return;
+    
+    try {
+      setLoading(true);
+      let lastId = null;
+      
+      if (loadMore && lastMessageId) {
+        lastId = lastMessageId;
+      }
+      
+      const response = await chatAPI.getMessages(chatId, messagesLimit, lastId);
+      
+      if (loadMore) {
+        // Append older messages at the beginning
+        setMessages(prevMessages => [...response.data, ...prevMessages]);
+      } else if (fetchNew) {
+        // Get only new messages
+        // This is an optimization: compare with existing messages and add only new ones
+        const newMessages = response.data.filter(
+          newMsg => !messages.some(existingMsg => existingMsg.id === newMsg.id)
+        );
+        setMessages(prevMessages => [...prevMessages, ...newMessages]);
+      } else {
+        // Replace all messages
+        setMessages(response.data);
+      }
+      
+      // Update pagination state
+      if (response.data.length < messagesLimit) {
+        setHasMoreMessages(false);
+      } else {
+        setHasMoreMessages(true);
+        if (response.data.length > 0) {
+          setLastMessageId(response.data[0].id);
+        }
+      }
+      
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching messages:", err);
+      setError("Failed to load messages");
+    } finally {
+      setLoading(false);
+    }
+  }, [messagesLimit, lastMessageId, messages]);
+
+  // Load initial chats when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchChats();
+    } else {
+      // Reset state when logged out
+      setChats([]);
+      setActiveChat(null);
+      setMessages([]);
+    }
+  }, [isAuthenticated, fetchChats]);
+
+  // Setup WebSocket connection when active chat changes
+  useEffect(() => {
+    if (!isAuthenticated || !activeChat) {
+      // Clean up any existing socket
+      if (socket) {
+        socket.disconnect();
+        setSocket(null);
+      }
+      return;
+    }
+    
+    // Create new websocket connection
+    const ws = new WebSocketService();
+    
+    ws.connect(activeChat.id)
+      .on("message", handleNewMessage)
+      .on("typing", handleTypingIndicator)
+      .on("read", handleReadReceipt);
+      
+    setSocket(ws);
+    
+    // Cleanup on unmount or when activeChat changes
+    return () => {
+      if (ws) {
+        ws.disconnect();
+      }
+    };
+  }, [isAuthenticated, activeChat]);
+
+  // Handle new message from WebSocket
+  const handleNewMessage = (data) => {
+    if (!data.message) return;
+    
+    // Add message to state
+    setMessages(prevMessages => [...prevMessages, data.message]);
+    
+    // Update chat list - find the chat and update its last message
+    setChats(prevChats => 
+      prevChats.map(chat => 
+        chat.id === activeChat.id 
+          ? { ...chat, last_message: data.message }
+          : chat
+      )
+    );
+    
+    // Mark message as read if it's from another user
+    if (data.message.sender.id !== user.id) {
+      socket.sendReadReceipt([data.message.id]);
+    }
+  };
+  
+  // Handle typing indicator from WebSocket
+  const handleTypingIndicator = (data) => {
+    // Update typing users state
+    if (data.user && data.is_typing) {
+      setTypingUsers(prev => ({ ...prev, [data.user.id]: data.user }));
+      
+      // Remove typing indicator after 3 seconds of no updates
+      setTimeout(() => {
+        setTypingUsers(prev => {
+          const newState = { ...prev };
+          delete newState[data.user.id];
+          return newState;
+        });
+      }, 3000);
+    }
+  };
+  
+  // Handle read receipt from WebSocket
+  const handleReadReceipt = (data) => {
+    if (!data.message_ids || !Array.isArray(data.message_ids)) return;
+    
+    // Update read status for messages
+    setMessages(prevMessages => 
+      prevMessages.map(msg => 
+        data.message_ids.includes(msg.id)
+          ? { ...msg, is_read: true }
+          : msg
+      )
+    );
+  };
+
+  // Set active chat and load its messages
+  const selectChat = async (chatId) => {
+    // Find the chat in the existing chats
+    const chat = chats.find(c => c.id === chatId);
+    
+    if (chat) {
+      setActiveChat(chat);
+      
+      // Reset pagination
+      setMessagesPage(1);
+      setLastMessageId(null);
+      setHasMoreMessages(true);
+      
+      // Load messages
+      await fetchMessages(chatId);
+      
+      return true;
+    }
+    
+    return false;
+  };
+
+  // Create a new chat
+  const createChat = async (participantIds, isGroupChat = false, name = "", initialMessage = "") => {
+    try {
+      setLoading(true);
+      const response = await chatAPI.createChat(participantIds, isGroupChat, name, initialMessage);
+      
+      // Add new chat to state
+      setChats(prevChats => [response.data, ...prevChats]);
+      
+      // Select the new chat
+      setActiveChat(response.data);
+      setMessages(response.data.messages || []);
+      
+      setError(null);
+      return response.data;
+    } catch (err) {
+      console.error("Error creating chat:", err);
+      setError("Failed to create chat");
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Send a message in the active chat
+  const sendMessage = async (text, attachments = []) => {
+    if (!activeChat) return null;
+    
+    try {
+      const response = await chatAPI.sendMessage(activeChat.id, text, attachments);
+      return response.data;
+    } catch (err) {
+      console.error("Error sending message:", err);
+      setError("Failed to send message");
+      return null;
+    }
+  };
+
+  // Send typing indicator
+  const sendTypingIndicator = (isTyping) => {
+    if (socket && activeChat) {
+      socket.sendTypingIndicator(isTyping);
+    }
+  };
+
+  // Load more messages (pagination)
+  const loadMoreMessages = async () => {
+    if (!activeChat || !hasMoreMessages) return;
+    
+    await fetchMessages(activeChat.id, false, true);
+    setMessagesPage(prev => prev + 1);
+  };
+
+  // Refresh messages
+  const refreshMessages = async () => {
+    if (!activeChat) return;
+    
+    await fetchMessages(activeChat.id, true);
+  };
+
+  return (
+    <ChatContext.Provider
+      value={{
+        chats,
+        activeChat,
+        messages,
+        loading,
+        error,
+        typingUsers,
+        hasMoreMessages,
+        fetchChats,
+        selectChat,
+        createChat,
+        sendMessage,
+        sendTypingIndicator,
+        loadMoreMessages,
+        refreshMessages
+      }}
+    >
+      {children}
+    </ChatContext.Provider>
+  );
+};
+
+// Custom hook to use the ChatContext
+export const useChat = () => {
+  const context = useContext(ChatContext);
+  if (!context) {
+    throw new Error("useChat must be used within a ChatProvider");
+  }
+  return context;
+};

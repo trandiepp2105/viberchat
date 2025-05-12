@@ -1,0 +1,305 @@
+import axios from "axios";
+
+// Create axios instance with default config
+const api = axios.create({
+  baseURL: process.env.REACT_APP_API_URL || "http://localhost:8000/api/v1",
+  timeout: 10000,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// Add request interceptor to inject auth token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("access_token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Add response interceptor to handle token refresh
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // If error is 401 and not already retrying
+    if (error.response.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        // Try to refresh the token
+        const refreshToken = localStorage.getItem("refresh_token");
+        if (!refreshToken) {
+          throw new Error("No refresh token available");
+        }
+        const response = await axios.post(
+          `${
+            process.env.REACT_APP_API_URL || "http://localhost:8000/api/v1"
+          }/token/refresh/`,
+          { refresh: refreshToken }
+        );
+
+        // Save new tokens
+        const { access } = response.data;
+        localStorage.setItem("access_token", access);
+
+        // Update auth header and retry
+        originalRequest.headers.Authorization = `Bearer ${access}`;
+        return api(originalRequest);
+      } catch (refreshError) {
+        // If refresh fails, log out
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        window.location.href = "/login";
+        return Promise.reject(refreshError);
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+// Auth API
+export const authAPI = {
+  login: (username, password) => api.post("/token/", { username, password }),
+
+  register: (userData) => api.post("/users/register/", userData),
+
+  refreshToken: (refreshToken) =>
+    api.post("/token/refresh/", { refresh: refreshToken }),
+
+  verifyToken: (token) => api.post("/token/verify/", { token }),
+};
+
+// User API
+export const userAPI = {
+  getProfile: () => api.get("/users/me/"),
+
+  updateProfile: (userData) => api.put("/users/update_profile/", userData),
+
+  changePassword: (oldPassword, newPassword) =>
+    api.post("/users/change_password/", {
+      old_password: oldPassword,
+      new_password: newPassword,
+      new_password2: newPassword,
+    }),
+
+  getContacts: () => api.get("/users/contacts/"),
+
+  addContact: (contactId) =>
+    api.post("/users/contacts/", { contact: contactId }),
+
+  removeContact: (contactId) => api.delete(`/users/contacts/${contactId}/`),
+
+  searchUsers: (query) => api.get(`/users/contacts/search/?q=${query}`),
+
+  // Password reset functions
+  requestPasswordReset: (email) =>
+    api.post("/users/password-reset/request/", { email }),
+
+  verifyOTP: (email, otpCode) =>
+    api.post("/users/verify-otp/", {
+      email,
+      otp_code: otpCode,
+    }),
+
+  resendOTP: (email, otpType) =>
+    api.post("/users/resend-otp/", {
+      email,
+      otp_type: otpType,
+    }),
+
+  completePasswordReset: (email, otpCode, newPassword, confirmPassword) =>
+    api.post("/users/password-reset/complete/", {
+      email,
+      otp_code: otpCode,
+      new_password: newPassword,
+      new_password2: confirmPassword,
+    }),
+};
+
+// Chat API
+export const chatAPI = {
+  getChats: () => api.get("/chats/sessions/"),
+
+  getChat: (chatId) => api.get(`/chats/sessions/${chatId}/`),
+
+  createChat: (
+    participantIds,
+    isGroupChat = false,
+    name = "",
+    initialMessage = ""
+  ) =>
+    api.post("/chats/sessions/", {
+      participant_ids: participantIds,
+      is_group_chat: isGroupChat,
+      name: name,
+      initial_message: initialMessage,
+    }),
+
+  getMessages: (chatId, limit = 50, lastMessageId = null) => {
+    let url = `/chats/sessions/${chatId}/messages/?limit=${limit}`;
+    if (lastMessageId) {
+      url += `&last_message_id=${lastMessageId}`;
+    }
+    return api.get(url);
+  },
+
+  sendMessage: (chatId, text, attachments = []) => {
+    const formData = new FormData();
+    formData.append("text", text);
+
+    if (attachments.length > 0) {
+      attachments.forEach((file) => {
+        formData.append("attachments", file);
+      });
+    }
+
+    return api.post(`/chats/sessions/${chatId}/send_message/`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+
+  markMessagesAsRead: (chatId, messageIds) =>
+    api.post(`/chats/sessions/${chatId}/mark_read/`, {
+      message_ids: messageIds,
+    }),
+};
+
+// Notification API
+export const notificationAPI = {
+  getNotifications: () => api.get("/notifications/"),
+
+  getUnreadNotifications: () => api.get("/notifications/unread/"),
+
+  markAsRead: (notificationId) =>
+    api.post(`/notifications/${notificationId}/mark_read/`),
+
+  markAllAsRead: () => api.post("/notifications/mark_all_read/"),
+
+  getSettings: () => api.get("/notifications/settings/"),
+
+  updateSettings: (settings) =>
+    api.patch("/notifications/settings/1/", settings),
+};
+
+// WebSocket Chat connection
+export class WebSocketService {
+  constructor() {
+    this.socket = null;
+    this.callbacks = {
+      message: [],
+      typing: [],
+      read: [],
+      open: [],
+      close: [],
+    };
+  }
+
+  connect(chatId) {
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      throw new Error("No authentication token found");
+    }
+
+    const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${wsProtocol}//${window.location.host}/ws/chat/${chatId}/?token=${token}`;
+
+    this.socket = new WebSocket(wsUrl);
+
+    this.socket.onopen = (event) => {
+      console.log("WebSocket connected");
+      this._executeCallbacks("open", event);
+    };
+
+    this.socket.onclose = (event) => {
+      console.log("WebSocket disconnected");
+      this._executeCallbacks("close", event);
+    };
+
+    this.socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      this._executeCallbacks(data.type, data);
+    };
+
+    return this;
+  }
+
+  disconnect() {
+    if (this.socket) {
+      this.socket.close();
+      this.socket = null;
+    }
+  }
+
+  on(eventType, callback) {
+    if (!this.callbacks[eventType]) {
+      this.callbacks[eventType] = [];
+    }
+    this.callbacks[eventType].push(callback);
+    return this;
+  }
+
+  off(eventType, callback) {
+    if (this.callbacks[eventType]) {
+      this.callbacks[eventType] = this.callbacks[eventType].filter(
+        (cb) => cb !== callback
+      );
+    }
+    return this;
+  }
+
+  sendMessage(text) {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      throw new Error("WebSocket is not connected");
+    }
+
+    this.socket.send(
+      JSON.stringify({
+        type: "message",
+        text: text,
+      })
+    );
+  }
+
+  sendTypingIndicator(isTyping) {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    this.socket.send(
+      JSON.stringify({
+        type: "typing",
+        is_typing: isTyping,
+      })
+    );
+  }
+
+  sendReadReceipt(messageIds) {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    this.socket.send(
+      JSON.stringify({
+        type: "read",
+        message_ids: messageIds,
+      })
+    );
+  }
+
+  _executeCallbacks(eventType, data) {
+    if (this.callbacks[eventType]) {
+      this.callbacks[eventType].forEach((callback) => callback(data));
+    }
+  }
+}
+
+export default api;

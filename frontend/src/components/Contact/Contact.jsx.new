@@ -1,0 +1,58 @@
+import React from "react";
+import "./Contact.scss";
+
+const Contact = ({ 
+  contact, 
+  isActive = false, 
+  onClick, 
+  isContactRequest = false 
+}) => {
+  return (
+    <div
+      className={`contact ${isActive ? "contact--active" : ""}`}
+      onClick={() => onClick(contact)}
+    >
+      <div className="contact__avatar">
+        <img 
+          src={contact.avatar || "https://i.pravatar.cc/150?img=8"} 
+          alt={contact.name || contact.username || "Contact"} 
+        />
+        {contact.status === "online" && (
+          <span className="contact__status"></span>
+        )}
+      </div>
+      <div className="contact__info">
+        <h3 className="contact__name">
+          {contact.name || contact.username || "Unknown Contact"}
+        </h3>
+        {contact.lastMessage && (
+          <p className="contact__message">
+            {contact.lastMessage.length > 30 
+              ? contact.lastMessage.substring(0, 30) + "..." 
+              : contact.lastMessage}
+          </p>
+        )}
+        {contact.first_name && !contact.lastMessage && (
+          <p className="contact__subtitle">
+            {`${contact.first_name || ''} ${contact.last_name || ''}`.trim() || "Contact"}
+          </p>
+        )}
+      </div>
+      <div className="contact__meta">
+        {contact.lastMessageTime && (
+          <span className="contact__time">{contact.lastMessageTime}</span>
+        )}
+        {contact.unreadCount > 0 && (
+          <span className="contact__badge">{contact.unreadCount}</span>
+        )}
+        {isContactRequest && (
+          <button className="contact__add-btn">
+            <i className="fas fa-plus"></i>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Contact;

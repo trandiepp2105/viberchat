@@ -1,0 +1,252 @@
+import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
+import "./Chat.scss";
+import Sidebar from "../../components/Sidebar/Sidebar";
+import ChatWindow from "../../components/ChatWindow/ChatWindow";
+import { chatAPI, userAPI, WebSocketService } from "../../services";
+
+const Chat = () => {
+  const { chatId } = useParams();
+  const [selectedChatId, setSelectedChatId] = useState(chatId || null);
+  const [chats, setChats] = useState([]);
+  const [contacts, setContacts] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  // WebSocket instance for real-time communication
+  const [webSocket, setWebSocket] = useState(null);
+  // Track user typing state
+  const [isTyping, setIsTyping] = useState(false);
+  const [otherUserTyping, setOtherUserTyping] = useState(false);
+
+  // Fetch chats and contacts when component mounts
+  useEffect(() => {
+    const fetchChatsAndContacts = async () => {
+      try {
+        setLoading(true);
+        // Fetch chats
+        const chatsResponse = await chatAPI.getChats();
+        setChats(chatsResponse.data);
+
+        // Fetch contacts
+        const contactsResponse = await userAPI.getContacts();
+        setContacts(contactsResponse.data);
+
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching data:", err);
+        setError("Failed to load chats and contacts");
+        setLoading(false);
+      }
+    };
+
+    fetchChatsAndContacts();
+  }, []);
+
+  // Fetch messages when selected chat changes
+  useEffect(() => {
+    if (!selectedChatId) return;
+
+    const fetchMessages = async () => {
+      try {
+        setLoading(true);
+        const response = await chatAPI.getMessages(selectedChatId);
+        setMessages(response.data);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching messages:", err);
+        setError("Failed to load messages");
+        setLoading(false);
+      }
+    };
+
+    fetchMessages();
+
+    // Setup WebSocket connection
+    const ws = new WebSocketService();
+    ws.connect(selectedChatId)
+      .on("message", handleNewMessage)
+      .on("typing", handleTypingIndicator)
+      .on("read", handleReadReceipt)
+      .on("edited", handleMessageEdited)
+      .on("deleted", handleMessageDeleted);
+
+    setWebSocket(ws);
+
+    // Cleanup WebSocket on unmount or when chat changes
+    return () => {
+      if (ws) {
+        ws.disconnect();
+      }
+    };
+  }, [selectedChatId]);
+
+  // Handle new message from WebSocket
+  const handleNewMessage = (data) => {
+    setMessages((prevMessages) => [...prevMessages, data.message]);
+  };
+
+  // Handle typing indicator
+  const handleTypingIndicator = (data) => {
+    // Update UI to show typing indicator
+    setOtherUserTyping(data.is_typing);
+  };
+
+  // Handle read receipt
+  const handleReadReceipt = (data) => {
+    // Update message read status
+    console.log("Messages marked as read:", data);
+  };
+
+  // Handle message edit notification
+  const handleMessageEdited = (data) => {
+    if (!data.message_id || !data.text) return;
+    
+    // Update the edited message in the state
+    setMessages((prevMessages) =>
+      prevMessages.map((msg) =>
+        (msg.id || msg.message_id) === data.message_id
+          ? { ...msg, text: data.text, is_edited: true }
+          : msg
+      )
+    );
+  };
+
+  // Handle message delete notification
+  const handleMessageDeleted = (data) => {
+    if (!data.message_id) return;
+    
+    // Mark the deleted message in state
+    setMessages((prevMessages) =>
+      prevMessages.map((msg) =>
+        (msg.id || msg.message_id) === data.message_id
+          ? { ...msg, is_deleted: true }
+          : msg
+      )
+    );
+  };
+
+  // Handle input changes to detect typing
+  const handleInputChange = (text) => {
+    if (!webSocket) return;
+
+    // When text is present and user wasn't typing before
+    if (text && !isTyping) {
+      setIsTyping(true);
+      webSocket.sendTypingIndicator(true);
+    }
+    // When text is empty and user was typing before
+    else if (!text && isTyping) {
+      setIsTyping(false);
+      webSocket.sendTypingIndicator(false);
+    }
+  };
+
+  // Handle sending a new message
+  const handleSendMessage = async (text) => {
+    if (!selectedChatId || !text.trim()) return;
+
+    try {
+      // Send message via API
+      await chatAPI.sendMessage(selectedChatId, text);
+
+      // Also send through WebSocket if available for immediate UI update
+      if (webSocket && webSocket.socket?.readyState === 1) { // WebSocket.OPEN = 1
+        webSocket.sendMessage(text);
+      }
+      // Message will be added through the WebSocket handler
+    } catch (err) {
+      console.error("Error sending message:", err);
+      setError("Failed to send message");
+    }
+  };
+
+  // Handle editing a message
+  const handleEditMessage = async (messageId, newText) => {
+    if (!selectedChatId || !messageId || !newText.trim()) return;
+
+    try {
+      // Send edit via API
+      await chatAPI.editMessage(selectedChatId, messageId, newText);
+
+      // Also send through WebSocket if available for immediate UI update
+      if (webSocket && webSocket.socket?.readyState === 1) {
+        webSocket.sendEditMessage(messageId, newText);
+      }
+
+      // Update message in state
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          (msg.id || msg.message_id) === messageId
+            ? { ...msg, text: newText, is_edited: true }
+            : msg
+        )
+      );
+    } catch (err) {
+      console.error("Error editing message:", err);
+      setError("Failed to edit message");
+    }
+  };
+
+  // Handle deleting a message
+  const handleDeleteMessage = async (messageId) => {
+    if (!selectedChatId || !messageId) return;
+
+    try {
+      // Send delete via API
+      await chatAPI.deleteMessage(selectedChatId, messageId);
+
+      // Also send through WebSocket if available for immediate UI update
+      if (webSocket && webSocket.socket?.readyState === 1) {
+        webSocket.sendDeleteMessage(messageId);
+      }
+
+      // Update message in state
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          (msg.id || msg.message_id) === messageId
+            ? { ...msg, is_deleted: true }
+            : msg
+        )
+      );
+    } catch (err) {
+      console.error("Error deleting message:", err);
+      setError("Failed to delete message");
+    }
+  };
+
+  // Handle chat selection from sidebar
+  const handleSelectChat = async (chatId) => {
+    setSelectedChatId(chatId);
+  };
+
+  // Select a formatted chat to display in the ChatWindow
+  const selectedChat = selectedChatId
+    ? chats.find((chat) => chat.id === selectedChatId)
+    : null;
+
+  return (
+    <div className="chat-page">
+      <Sidebar
+        chats={chats}
+        contacts={contacts}
+        onSelectChat={handleSelectChat}
+        selectedChatId={selectedChatId}
+      />
+      <ChatWindow
+        selectedChat={selectedChat}
+        messages={messages}
+        onSendMessage={handleSendMessage}
+        onInputChange={handleInputChange}
+        onEditMessage={handleEditMessage}
+        onDeleteMessage={handleDeleteMessage}
+        isTyping={isTyping}
+        otherUserTyping={otherUserTyping}
+        loading={loading}
+        error={error}
+      />
+    </div>
+  );
+};
+
+export default Chat;
