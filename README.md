@@ -39,8 +39,8 @@ These instructions will get you a copy of the project up and running on your loc
 1.  **Clone the repository:**
 
     ```bash
-    git clone https://github.com/trandiepp2105/viberstore.git
-    cd viberstore
+    git clone https://github.com/trandiepp2105/viberchat.git
+    cd viberchat
     ```
 
 2.  **Configure Environment Variables:**
@@ -63,22 +63,22 @@ These instructions will get you a copy of the project up and running on your loc
       APP_ORIGIN=http://localhost:8000
       FRONTEND_ORIGIN=http://localhost:3000 # Adjust port if your local frontend runs elsewhere
       FRONTEND_ACCESS_URL=http://localhost:3000/ # For VNPay return, etc.
-      DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,backend,viberstore_backend # 'backend' or 'viberstore_backend' if that's the service name
+      DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,backend,viberchat_backend # 'backend' or 'viberchat_backend' if that's the service name
 
       # =======================================
       # MYSQL CONFIGURATION
       # =======================================
-      MYSQL_HOST=viberstore_mysql # Docker service name for MySQL
+      MYSQL_HOST=viberchat_mysql # Docker service name for MySQL
       MYSQL_PORT=3309             # MySQL port INSIDE its container
       MYSQL_ROOT_PASSWORD=your_mysql_root_password_local
       MYSQL_USER=trandiep
       MYSQL_PASSWORD=your_local_db_password # Change for local dev, DO NOT use production password
-      MYSQL_DATABASE=viberstore
+      MYSQL_DATABASE=viberchat
 
       # =======================================
       # REDIS CONFIGURATION
       # =======================================
-      REDIS_HOST=viberstore_redis # Docker service name for Redis
+      REDIS_HOST=viberchat_redis # Docker service name for Redis
       REDIS_CACHE_URL=redis://${REDIS_HOST}:6379/1
 
       # =======================================
@@ -154,8 +154,6 @@ These instructions will get you a copy of the project up and running on your loc
 - [Cassandra Documentation](https://cassandra.apache.org/doc/latest/)
 - [Socket.IO Docs](https://socket.io/)
 - [React.js Official Site](https://reactjs.org/)
-- [Express.js](https://expressjs.com/)
-
 ---
 
 ## 🤝 Contributing
