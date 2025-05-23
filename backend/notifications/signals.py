@@ -3,7 +3,7 @@ from django.dispatch import receiver
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from .models import Notification, NotificationSetting
-from chats.models import ChatSession
+from chats.models import Conversation
 from chats.cassandra_models import ChatMessage
 from users.models import Contact
 
@@ -34,23 +34,22 @@ def contact_notification(sender, instance, created, **kwargs):
         )
 
 
-def create_message_notification(chat_session_id, message):
+def create_message_notification(conversation_id, message):
     """
     Create notifications for new messages
     This is called from the ChatConsumer after a message is saved
     """
     try:
-        # Get the chat session
-        chat_session = ChatSession.objects.get(id=chat_session_id)
+        # Get the conversation
+        conversation = Conversation.objects.get(id=conversation_id)
         
         # Get the sender
         sender = User.objects.get(id=message.sender_id)
         
         # Get content type
-        content_type = ContentType.objects.get_for_model(ChatSession)
-        
-        # Create notification for all participants except sender
-        for recipient in chat_session.participants.exclude(id=sender.id):
+        content_type = ContentType.objects.get_for_model(Conversation)
+          # Create notification for all participants except sender
+        for recipient in conversation.participants.exclude(id=sender.id):
             # Skip if user has disabled message notifications
             try:
                 settings = NotificationSetting.objects.get(user=recipient)
@@ -61,8 +60,8 @@ def create_message_notification(chat_session_id, message):
                 
             # Create the notification
             notification_text = f"New message from {sender.username}"
-            if chat_session.is_group_chat and chat_session.name:
-                notification_text += f" in {chat_session.name}"
+            if conversation.is_group and conversation.name:
+                notification_text += f" in {conversation.name}"
                 
             Notification.objects.create(
                 recipient=recipient,
@@ -70,7 +69,7 @@ def create_message_notification(chat_session_id, message):
                 notification_type='message',
                 text=notification_text,
                 content_type=content_type,
-                object_id=str(chat_session.id)
+                object_id=str(conversation.id)
             )
     except Exception as e:
         print(f"Error creating message notification: {str(e)}")

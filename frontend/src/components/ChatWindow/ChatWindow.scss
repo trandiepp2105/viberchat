@@ -22,6 +22,108 @@
     }
   }
 
+  &__header-actions {
+    display: flex;
+    align-items: center;
+  }
+
+  &__pinned-btn {
+    background: none;
+    border: none;
+    font-size: 16px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba($text-color-dark, 0.7);
+    cursor: pointer;
+    margin-right: $spacing-sm;
+    position: relative;
+    transition: $transition-default;
+
+    &:hover {
+      background-color: rgba($primary-color, 0.1);
+      color: $primary-color;
+    }
+
+    i {
+      transform: rotate(45deg);
+    }
+  }
+
+  &__pinned-count {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    font-size: 10px;
+    background-color: $primary-color;
+    color: white;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__pinned-messages {
+    background-color: white;
+    border-bottom: 1px solid rgba($text-color-dark, 0.1);
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  &__pinned-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: $spacing-sm $spacing-md;
+    background-color: rgba($primary-color, 0.05);
+    border-bottom: 1px solid rgba($primary-color, 0.1);
+
+    h3 {
+      font-size: 14px;
+      font-weight: 600;
+      margin: 0;
+      color: $primary-color;
+    }
+
+    button {
+      background: none;
+      border: none;
+      color: rgba($text-color-dark, 0.5);
+      cursor: pointer;
+      padding: $spacing-xs;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      &:hover {
+        background-color: rgba($text-color-dark, 0.05);
+        color: rgba($text-color-dark, 0.8);
+      }
+    }
+  }
+
+  &__pinned-list {
+    padding: $spacing-sm $spacing-md;
+
+    .message {
+      padding: $spacing-xs;
+      margin-bottom: $spacing-sm;
+      background-color: rgba($light-color, 0.5);
+      border-radius: $border-radius-sm;
+
+      &__bubble {
+        max-width: 100%;
+        box-shadow: none;
+      }
+    }
+  }
+
   &__info-btn {
     background: none;
     border: none;
@@ -67,12 +169,22 @@
       color: $primary-color;
     }
   }
-
   &__messages {
     flex: 1;
     padding: $spacing-lg $spacing-xl;
     overflow-y: auto;
-    background-color: $light-color;
+    background-color: #f5f7fb; // Light background for chat area
+    display: flex;
+    flex-direction: column;
+
+    // Add space between messages
+    .message {
+      margin-bottom: $spacing-md;
+
+      &:last-child {
+        margin-bottom: $spacing-xs;
+      }
+    }
 
     @media (max-width: $breakpoint-sm) {
       padding: $spacing-md $spacing-md;

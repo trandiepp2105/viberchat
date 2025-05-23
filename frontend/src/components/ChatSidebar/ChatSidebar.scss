@@ -59,7 +59,6 @@
       background-color: rgba($primary-color, 0.05);
     }
   }
-
   &__content {
     flex: 1;
     overflow-y: auto;
@@ -68,6 +67,29 @@
     @media (max-width: $breakpoint-sm) {
       padding: $spacing-sm;
     }
+  }
+
+  &__chat-title {
+    padding: $spacing-md 0;
+    text-align: center;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    margin-bottom: $spacing-md;
+
+    h3 {
+      margin: 0 0 $spacing-xs;
+      font-size: 18px;
+      font-weight: $font-weight-bold;
+    }
+
+    p {
+      margin: 0;
+      font-size: 14px;
+      color: rgba($text-color-dark, 0.6);
+    }
+  }
+
+  &__info-section {
+    margin-bottom: $spacing-lg;
   }
 
   &__section {

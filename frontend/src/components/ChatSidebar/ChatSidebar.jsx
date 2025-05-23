@@ -64,8 +64,14 @@ const ChatSidebar = ({ chat, onClose }) => {
     if (!chat?.id) return;
 
     // Create sample pinned messages
-    setLoading((prev) => ({ ...prev, pinned: true, media: true, files: true, links: true }));
-    
+    setLoading((prev) => ({
+      ...prev,
+      pinned: true,
+      media: true,
+      files: true,
+      links: true,
+    }));
+
     // Sample data timeouts (using different timeouts to avoid race conditions)
     // Create sample pinned messages
     setTimeout(() => {
@@ -216,8 +222,26 @@ const ChatSidebar = ({ chat, onClose }) => {
         <button className="chat-sidebar__close" onClick={onClose}>
           <i className="fas fa-times"></i>
         </button>
-      </div>
+      </div>{" "}
       <div className="chat-sidebar__content">
+        {/* Chat Info Section */}
+        <div className="chat-sidebar__section chat-sidebar__info-section">
+          <div className="chat-sidebar__chat-title">
+            <h3>
+              {chat.name
+                ? chat.name
+                : chat.is_group_chat
+                ? chat.participants?.map((p) => p.username).join(", ")
+                : // For direct chats, find the other user
+                  chat.participants?.find((p) => p.id !== chat.user_id)
+                    ?.username || "Chat"}
+            </h3>
+            {chat.is_group_chat && (
+              <p>{chat.participants?.length || 0} participants</p>
+            )}
+          </div>
+        </div>
+
         {/* Pinned Messages Section */}
         <div className="chat-sidebar__section">
           <div

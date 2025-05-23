@@ -7,12 +7,12 @@ import uuid
 class ChatMessage(Model):
     """Cassandra model for chat messages.
     Optimized for high-volume writes and reads by conversation_id.
-    """
+    """    
     conversation_id = columns.UUID(primary_key=True, partition_key=True)
     message_id = columns.UUID(primary_key=True, clustering_order="DESC")
     sender_id = columns.UUID(required=True)
     text = columns.Text()
-    timestamp = columns.DateTime(default=datetime.now)
+    message_timestamp = columns.DateTime(default=datetime.now)
     
     # For tracking if message is read
     is_read = columns.Boolean(default=False)
@@ -27,8 +27,12 @@ class ChatMessage(Model):
     is_deleted = columns.Boolean(default=False)
     deleted_at = columns.DateTime()
     
-    class Meta:
-        table_name = "conversation_message"
+    # For pinned messages
+    is_pinned = columns.Boolean(default=False)
+    pinned_at = columns.DateTime()
+    pinned_by = columns.UUID()
+    
+    __table_name__ = "conversation_message"
     
     @classmethod
     def create_message(cls, conversation_id, sender_id, text, has_attachment=False):
@@ -132,7 +136,6 @@ class ChatMessage(Model):
         except Exception as e:
             print(f"Error marking message as read: {str(e)}")
             return None
-    
     @classmethod
     def edit_message(cls, conversation_id, message_id, new_text):
         """Edit a message's text"""
@@ -159,3 +162,71 @@ class ChatMessage(Model):
         except Exception as e:
             print(f"Error deleting message: {str(e)}")
             return None
+            
+    @classmethod
+    def pin_message(cls, conversation_id, message_id, user_id):
+        """Pin a message in a conversation"""
+        try:
+            # Ensure IDs are UUID objects
+            if not isinstance(conversation_id, uuid.UUID):
+                conversation_id = uuid.UUID(str(conversation_id))
+            if not isinstance(message_id, uuid.UUID):
+                message_id = uuid.UUID(str(message_id))
+            if not isinstance(user_id, uuid.UUID):
+                user_id_str = str(user_id)
+                try:
+                    if len(user_id_str) == 36 and '-' in user_id_str:
+                        user_id = uuid.UUID(user_id_str)
+                    else:
+                        user_id = uuid.uuid5(uuid.NAMESPACE_DNS, f"user-{user_id_str}")
+                except ValueError:
+                    user_id = uuid.uuid5(uuid.NAMESPACE_DNS, f"user-{user_id_str}")
+            
+            # Check if message exists
+            message = cls.objects.get(conversation_id=conversation_id, message_id=message_id)
+            message.is_pinned = True
+            message.pinned_at = datetime.now()
+            message.pinned_by = user_id
+            message.save()
+            return message
+        except Exception as e:
+            print(f"Error pinning message: {str(e)}")
+            return None
+            
+    @classmethod
+    def unpin_message(cls, conversation_id, message_id):
+        """Unpin a message in a conversation"""
+        try:
+            # Ensure IDs are UUID objects
+            if not isinstance(conversation_id, uuid.UUID):
+                conversation_id = uuid.UUID(str(conversation_id))
+            if not isinstance(message_id, uuid.UUID):
+                message_id = uuid.UUID(str(message_id))
+                
+            # Check if message exists
+            message = cls.objects.get(conversation_id=conversation_id, message_id=message_id)
+            message.is_pinned = False
+            message.save()
+            return message
+        except Exception as e:
+            print(f"Error unpinning message: {str(e)}")
+            return None
+            
+    @classmethod
+    def get_pinned_messages(cls, conversation_id, limit=10):
+        """Get all pinned messages for a conversation"""
+        try:
+            # Ensure conversation_id is a UUID
+            if not isinstance(conversation_id, uuid.UUID):
+                conversation_id = uuid.UUID(str(conversation_id))
+                
+            # Query for pinned messages
+            query = cls.objects.filter(
+                conversation_id=conversation_id,
+                is_pinned=True
+            ).allow_filtering().limit(limit)
+            
+            return list(query)
+        except Exception as e:
+            print(f"Error getting pinned messages: {str(e)}")
+            return []

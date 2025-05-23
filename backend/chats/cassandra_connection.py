@@ -4,13 +4,17 @@ This module initializes Cassandra connection when Django starts
 from django.conf import settings
 from cassandra.cluster import Cluster
 from cassandra.cqlengine import connection
-from cassandra.cqlengine.management import sync_table, create_keyspace_simple
+from cassandra.cqlengine.management import sync_table
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
 def connect_to_cassandra():
     try:
+        # Ensure environment variable is set
+        os.environ['CQLENG_ALLOW_SCHEMA_MANAGEMENT'] = '1'
+        
         # Configure connection to Cassandra
         connection.setup(
             settings.CASSANDRA_HOSTS,
@@ -20,11 +24,10 @@ def connect_to_cassandra():
             connect_timeout=30
         )
         
-        # Create keyspace if it doesn't exist
-        create_keyspace_if_not_exists()
-        
-        # Sync tables to ensure schema is up to date
-        from .cassandra_models import ChatMessage
+        # Sync table to ensure schema is up to date
+        from chats.cassandra_models import ChatMessage
+        table_name = getattr(ChatMessage, '__table_name__', None)
+        logger.info(f"Syncing table: {table_name}")
         sync_table(ChatMessage)
         
         logger.info(f"Successfully connected to Cassandra keyspace {settings.CASSANDRA_KEYSPACE}")
@@ -33,30 +36,19 @@ def connect_to_cassandra():
         logger.error(f"Failed to connect to Cassandra: {str(e)}")
         return False
 
-def create_keyspace_if_not_exists():
+def check_cassandra_connection():
+    """
+    Kiểm tra kết nối Cassandra hiện có, nếu mất kết nối thì thử kết nối lại.
+    Có thể được sử dụng trong các health check hoặc theo dõi kết nối.
+    """
     try:
-        # Connect to Cassandra without keyspace first
-        cluster = Cluster(settings.CASSANDRA_HOSTS)
-        session = cluster.connect()
-        
-        keyspace = settings.CASSANDRA_KEYSPACE
-        replication_factor = 1  # Use higher for production
-        
-        # Check if keyspace exists
-        keyspaces = session.execute("SELECT keyspace_name FROM system_schema.keyspaces")
-        keyspace_exists = any(ks[0] == keyspace.lower() for ks in keyspaces)
-        
-        if not keyspace_exists:
-            logger.info(f"Creating keyspace {keyspace}...")
-            session.execute(f"""
-                CREATE KEYSPACE {keyspace}
-                WITH REPLICATION = {{ 'class' : 'SimpleStrategy', 'replication_factor' : {replication_factor} }}
-            """)
-            logger.info(f"Keyspace {keyspace} created successfully")
-        
-        session.shutdown()
-        cluster.shutdown()
+        # Thử một truy vấn đơn giản để kiểm tra kết nối
+        from cassandra.cqlengine.connection import get_session
+        session = get_session()
+        session.execute("SELECT now() FROM system.local")
+        logger.debug("Cassandra connection is active")
         return True
     except Exception as e:
-        logger.error(f"Error creating keyspace: {str(e)}")
-        return False
+        logger.warning(f"Cassandra connection check failed: {str(e)}")
+        # Thử kết nối lại
+        return connect_to_cassandra()

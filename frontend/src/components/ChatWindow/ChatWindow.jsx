@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import "./ChatWindow.scss";
 import Header from "../Header/Header";
 import Message from "../Message/Message";
@@ -12,10 +12,13 @@ const getMessageTime = (message) => {
 const ChatWindow = ({
   selectedChat,
   messages,
+  pinnedMessages = [],
   onSendMessage,
   onInputChange,
   onEditMessage,
   onDeleteMessage,
+  onPinMessage,
+  onUnpinMessage,
   isTyping,
   otherUserTyping,
   loading,
@@ -25,6 +28,12 @@ const ChatWindow = ({
   showMainSidebar,
 }) => {
   const messagesEndRef = useRef(null);
+  const [showPinnedMessages, setShowPinnedMessages] = useState(false);
+  // If no pinnedMessages prop is provided, fall back to filtering from all messages
+  const displayedPinnedMessages =
+    pinnedMessages.length > 0
+      ? pinnedMessages
+      : messages.filter((m) => m.is_pinned);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -48,6 +57,18 @@ const ChatWindow = ({
   const handleDeleteMessage = (messageId) => {
     if (onDeleteMessage) {
       onDeleteMessage(messageId);
+    }
+  };
+
+  const handlePinMessage = (messageId) => {
+    if (onPinMessage) {
+      onPinMessage(messageId);
+    }
+  };
+
+  const handleUnpinMessage = (messageId) => {
+    if (onUnpinMessage) {
+      onUnpinMessage(messageId);
     }
   };
 
@@ -98,15 +119,70 @@ const ChatWindow = ({
                   : "Online"
               }
               avatar={selectedChat.avatar || "https://i.pravatar.cc/150?img=8"}
-            />
-            <button className="chat-window__info-btn" onClick={onToggleSidebar}>
-              <i className="fas fa-info-circle"></i>
-            </button>
+            />{" "}
+            <div className="chat-window__header-actions">
+              {displayedPinnedMessages.length > 0 && (
+                <button
+                  className="chat-window__pinned-btn"
+                  onClick={() => setShowPinnedMessages(!showPinnedMessages)}
+                  title="Pinned Messages"
+                >
+                  <i className="fas fa-thumbtack"></i>
+                  <span className="chat-window__pinned-count">
+                    {displayedPinnedMessages.length}
+                  </span>
+                </button>
+              )}
+              <button
+                className="chat-window__info-btn"
+                onClick={onToggleSidebar}
+              >
+                <i className="fas fa-info-circle"></i>
+              </button>
+            </div>
           </div>
+          {showPinnedMessages && displayedPinnedMessages.length > 0 && (
+            <div className="chat-window__pinned-messages">
+              <div className="chat-window__pinned-header">
+                <h3>Pinned Messages</h3>
+                <button onClick={() => setShowPinnedMessages(false)}>
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              <div className="chat-window__pinned-list">
+                {" "}
+                {displayedPinnedMessages.map((message) => (
+                  <Message
+                    key={`pinned-${message.id || message.message_id}`}
+                    id={message.id || message.message_id}
+                    text={message.text}
+                    isMe={
+                      message.sender === "me" ||
+                      message.sender?.id === selectedChat.user_id
+                    }
+                    timestamp={getMessageTime(message)}
+                    isDeleted={message.is_deleted}
+                    isEdited={message.is_edited}
+                    isPinned={message.is_pinned}
+                    onEdit={handleEditMessage}
+                    onDelete={handleDeleteMessage}
+                    onPin={handlePinMessage}
+                    onUnpin={handleUnpinMessage}
+                    sender={
+                      message.sender_name ||
+                      message.sender?.name ||
+                      message.sender?.username
+                    }
+                    isGroupChat={selectedChat?.is_group_chat}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
           <div className="chat-window__messages">
             <div className="chat-window__date-separator">
               <span>Today</span>
-            </div>
+            </div>{" "}
             {messages.map((message) => (
               <Message
                 key={message.id || message.message_id}
@@ -119,8 +195,17 @@ const ChatWindow = ({
                 timestamp={getMessageTime(message)}
                 isDeleted={message.is_deleted}
                 isEdited={message.is_edited}
+                isPinned={message.is_pinned}
                 onEdit={handleEditMessage}
                 onDelete={handleDeleteMessage}
+                onPin={handlePinMessage}
+                onUnpin={handleUnpinMessage}
+                sender={
+                  message.sender_name ||
+                  message.sender?.name ||
+                  message.sender?.username
+                }
+                isGroupChat={selectedChat?.is_group_chat}
               />
             ))}
             {otherUserTyping && (

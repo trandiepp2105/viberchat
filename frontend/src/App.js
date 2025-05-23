@@ -7,6 +7,7 @@ import MainLayout from "./layouts/MainLayout/MainLayout";
 
 // Pages
 import Chat from "./pages/Chat/Chat";
+import NewChat from "./pages/Chat/NewChat";
 import Settings from "./pages/Settings/Settings";
 import NotFound from "./pages/NotFound/NotFound";
 import Login from "./pages/Auth/Login";
@@ -88,6 +89,7 @@ function AppRoutes() {
       >
         <Route index element={<Navigate to="/chat" replace />} />
         <Route path="chat" element={<Chat />} />
+        <Route path="chat/new" element={<NewChat />} />
         <Route path="chat/:id" element={<Chat />} />
         <Route path="settings" element={<Settings />} />
         <Route path="*" element={<NotFound />} />

@@ -3,8 +3,8 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from .models_conversation import Conversation
-from .cassandra_models_conversation import ChatMessage
+from .models import Conversation
+from .cassandra_models import ChatMessage
 import uuid
 
 User = get_user_model()
@@ -56,38 +56,37 @@ class ConversationConsumer(AsyncWebsocketConsumer):
                 self.room_group_name,
                 self.channel_name
             )
-            
-        # Update user status to offline
+              # Update user status to offline
         await self.update_user_status('offline')
         
     async def receive(self, text_data):
-        print("\n===== DEBUG: WebSocket Consumer nhận tin nhắn =====")
-        print(f"WebSocket received data: {text_data}")
-        
+        """
+        Receive message from WebSocket.
+        """
         data = json.loads(text_data)
         message_type = data.get('type', 'message')
-        print(f"Loại tin nhắn: {message_type}")
         
         if message_type == 'message':
-            print("Xử lý tin nhắn chat mới")
             # Process a new chat message
             await self.handle_chat_message(data)
         elif message_type == 'typing':
-            print("Xử lý typing indicator")
             # Process typing indicator
             await self.handle_typing_indicator(data)        
         elif message_type == 'read':
-            print("Xử lý đánh dấu đã đọc")
             # Process read receipts
             await self.handle_read_receipt(data)
         elif message_type == 'edit':
-            print("Xử lý chỉnh sửa tin nhắn")
             # Process message edits
             await self.handle_edit_message(data)
         elif message_type == 'delete':
-            print("Xử lý xóa tin nhắn")
             # Process message deletions
             await self.handle_delete_message(data)
+        elif message_type == 'pin':
+            # Process message pins
+            await self.handle_pin_message(data)
+        elif message_type == 'unpin':
+            # Process message unpins
+            await self.handle_unpin_message(data)
 
     async def handle_chat_message(self, data):
         print("===== DEBUG: Lưu và broadcast tin nhắn =====")
@@ -105,7 +104,7 @@ class ConversationConsumer(AsyncWebsocketConsumer):
                 'id': str(message.message_id),
                 'sender_id': str(message.sender_id),
                 'text': message.text,
-                'timestamp': message.timestamp.isoformat(),
+                'timestamp': message.message_timestamp.isoformat(),
             }
         }
         print(f"Broadcast tin nhắn tới group {self.room_group_name}: {message_data}")
@@ -191,6 +190,53 @@ class ConversationConsumer(AsyncWebsocketConsumer):
                 'user_id': str(self.user.id)
             }
         )
+    
+    async def handle_pin_message(self, data):
+        """Handle pinning a message"""
+        message_id = data.get('message_id')
+        
+        if not message_id:
+            return
+            
+        try:
+            # Pin the message
+            message = await self.pin_message(message_id)
+            
+            # Broadcast pinned message to group
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'pinned_message',
+                    'message_id': str(message.message_id),
+                    'user_id': str(self.user.id),
+                    'pinned_at': message.pinned_at.isoformat() if message.pinned_at else None
+                }
+            )
+        except Exception as e:
+            print(f"Error handling pin message: {str(e)}")
+    
+    async def handle_unpin_message(self, data):
+        """Handle unpinning a message"""
+        message_id = data.get('message_id')
+        
+        if not message_id:
+            return
+            
+        try:
+            # Unpin the message
+            message = await self.unpin_message(message_id)
+            
+            # Broadcast unpinned message to group
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'unpinned_message',
+                    'message_id': str(message.message_id),
+                    'user_id': str(self.user.id)
+                }
+            )
+        except Exception as e:
+            print(f"Error handling unpin message: {str(e)}")
         
     async def chat_message(self, event):
         # Send message to WebSocket
@@ -235,6 +281,23 @@ class ConversationConsumer(AsyncWebsocketConsumer):
         # Send deleted message notification to WebSocket
         await self.send(text_data=json.dumps({
             'type': 'deleted',
+            'message_id': event['message_id'],
+            'user_id': event['user_id']
+        }))
+    
+    async def pinned_message(self, event):
+        """Send pinned message notification to WebSocket"""
+        await self.send(text_data=json.dumps({
+            'type': 'pinned',
+            'message_id': event['message_id'],
+            'user_id': event['user_id'],
+            'pinned_at': event['pinned_at']
+        }))
+    
+    async def unpinned_message(self, event):
+        """Send unpinned message notification to WebSocket"""
+        await self.send(text_data=json.dumps({
+            'type': 'unpinned',
             'message_id': event['message_id'],
             'user_id': event['user_id']
         }))
@@ -330,6 +393,23 @@ class ConversationConsumer(AsyncWebsocketConsumer):
     def delete_message(self, message_id):
         """Soft delete a message"""
         return ChatMessage.delete_message(
+            conversation_id=uuid.UUID(self.conversation_id),
+            message_id=uuid.UUID(message_id)
+        )
+    
+    @database_sync_to_async
+    def pin_message(self, message_id):
+        """Pin a message in the conversation"""
+        return ChatMessage.pin_message(
+            conversation_id=uuid.UUID(self.conversation_id),
+            message_id=uuid.UUID(message_id),
+            user_id=self.user.id
+        )
+    
+    @database_sync_to_async
+    def unpin_message(self, message_id):
+        """Unpin a message in the conversation"""
+        return ChatMessage.unpin_message(
             conversation_id=uuid.UUID(self.conversation_id),
             message_id=uuid.UUID(message_id)
         )

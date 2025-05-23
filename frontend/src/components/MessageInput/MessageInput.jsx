@@ -50,25 +50,41 @@ const MessageInput = ({ onSendMessage, onInputChange }) => {
       }
     };
   }, []);
-
   return (
     <div className="message-input">
       <form className="message-input__form" onSubmit={handleSubmit}>
-        <button type="button" className="message-input__attach-btn">
-          <i className="fas fa-paperclip"></i>
-        </button>
+        <div className="message-input__buttons-left">
+          <button type="button" className="message-input__action-btn">
+            <i className="fas fa-plus"></i>
+          </button>
+          <button type="button" className="message-input__action-btn">
+            <i className="fas fa-image"></i>
+          </button>
+          <button type="button" className="message-input__action-btn">
+            <i className="fas fa-file-alt"></i>
+          </button>
+          <button type="button" className="message-input__action-btn">
+            <i className="fas fa-film"></i>
+          </button>
+        </div>
 
-        <input
-          type="text"
-          className="message-input__field"
-          placeholder="Type a message..."
-          value={message}
-          onChange={handleChange}
-        />
+        <div className="message-input__field-container">
+          <button type="button" className="message-input__emoji-btn">
+            <i className="fas fa-smile"></i>
+          </button>
 
-        <button type="button" className="message-input__emoji-btn">
-          <i className="fas fa-smile"></i>
-        </button>
+          <input
+            type="text"
+            className="message-input__field"
+            placeholder="Aa"
+            value={message}
+            onChange={handleChange}
+          />
+
+          <button type="button" className="message-input__mic-btn">
+            <i className="fas fa-microphone"></i>
+          </button>
+        </div>
 
         <button
           type="submit"

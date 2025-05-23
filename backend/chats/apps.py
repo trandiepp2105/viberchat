@@ -8,7 +8,7 @@ class ChatsConfig(AppConfig):
     name = 'chats'
 
     def ready(self):
-        import chats.signals
+        import chats.signals # Ensure signals are imported if you have any
         
         # Initialize Cassandra connection
         from .cassandra_connection import connect_to_cassandra

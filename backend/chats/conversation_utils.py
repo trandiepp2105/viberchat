@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from .models_conversation import Conversation
+from .models import Conversation
 
 User = get_user_model()
 

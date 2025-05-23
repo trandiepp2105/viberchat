@@ -74,9 +74,7 @@ class Contact(models.Model):
         unique_together = ('user', 'contact')
         verbose_name = _('contact')
         verbose_name_plural = _('contacts')
-        unique_together = ('user', 'contact')
-        verbose_name = _('contact')
-        verbose_name_plural = _('contacts')
+        ordering = ['-created_at']
         
     def __str__(self):
         return f"{self.user.username}'s contact: {self.contact.username}"

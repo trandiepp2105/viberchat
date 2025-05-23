@@ -13,6 +13,8 @@ class WebSocketService {
       read: [],
       edited: [],
       deleted: [],
+      pinned: [],
+      unpinned: [],
       open: [],
       close: [],
     };
@@ -43,19 +45,15 @@ class WebSocketService {
       // Use the current host with proxy path for WebSockets
       const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const host = window.location.hostname;
-      const port = window.location.port;
-
-      // Fix URL formatting - Add trailing slash if missing
+      const port = window.location.port; // Fix URL formatting - Add trailing slash if missing
       let chatPath = chatId;
       if (!chatPath.endsWith("/")) {
         chatPath = `${chatPath}/`;
-      }
-
-      // Important: You need to support both direct connection to Django Channels (8001)
+      }      // Important: You need to support both direct connection to Django Channels (8001)
       // and connection via React Dev Server proxy (3000)
       const wsUrl = `${wsProtocol}//${host}:${port}/ws/chat/${chatPath}?token=${token}`;
 
-      console.log("===== DEBUG: Bước 4 - Connecting to WebSocket =====");
+      console.log("===== DEBUG: Connecting to WebSocket =====");
       console.log("WebSocket URL:", wsUrl);
 
       try {
@@ -178,6 +176,14 @@ class WebSocketService {
             "Chuyển đổi loại tin nhắn từ deleted_message sang deleted"
           );
           type = "deleted";
+        } else if (type === "pinned_message" || type === "pinned") {
+          console.log("Chuyển đổi loại tin nhắn từ pinned_message sang pinned");
+          type = "pinned";
+        } else if (type === "unpinned_message" || type === "unpinned") {
+          console.log(
+            "Chuyển đổi loại tin nhắn từ unpinned_message sang unpinned"
+          );
+          type = "unpinned";
         }
 
         console.log(`Loại tin nhắn cuối cùng: ${type}`);
@@ -349,6 +355,40 @@ class WebSocketService {
     this.socket.send(
       JSON.stringify({
         type: "delete",
+        message_id: messageId,
+      })
+    );
+  }
+
+  /**
+   * Send a request to pin a message
+   * @param {string} messageId - The ID of the message to pin
+   */
+  sendPinMessage(messageId) {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      throw new Error("WebSocket is not connected");
+    }
+
+    this.socket.send(
+      JSON.stringify({
+        type: "pin",
+        message_id: messageId,
+      })
+    );
+  }
+
+  /**
+   * Send a request to unpin a message
+   * @param {string} messageId - The ID of the message to unpin
+   */
+  sendUnpinMessage(messageId) {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      throw new Error("WebSocket is not connected");
+    }
+
+    this.socket.send(
+      JSON.stringify({
+        type: "unpin",
         message_id: messageId,
       })
     );

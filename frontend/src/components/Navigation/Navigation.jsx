@@ -45,7 +45,10 @@ const Navigation = () => {
           onClick={() => setShowProfileMenu(!showProfileMenu)}
         >
           <img
-            src={user?.avatar || "https://i.pravatar.cc/150?img=1"}
+            src={
+              user?.avatar ||
+              "https://scontent.fsgn19-1.fna.fbcdn.net/v/t1.30497-1/453178253_471506465671661_2781666950760530985_n.png?stp=dst-png_s100x100&_nc_cat=1&ccb=1-7&_nc_sid=136b72&_nc_ohc=duGw32spGhUQ7kNvwFzBlL2&_nc_oc=Adn1Mg19a5yaVuZdzuTIlhVO_1HVCiWk80ndOZxSB4wjjm03hCXhpIW0dRugQTGWEgU&_nc_ad=z-m&_nc_cid=0&_nc_zt=24&_nc_ht=scontent.fsgn19-1.fna&oh=00_AfKLjwFqWH1pIRG5HLU8eAE4rQGLDdseO_vyja-jEYN5Pg&oe=6852B6FA"
+            }
             alt="Profile"
           />
         </div>

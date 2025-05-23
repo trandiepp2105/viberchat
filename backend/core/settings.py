@@ -94,7 +94,7 @@ DATABASES = {
 }
 
 # Cassandra settings for chat messages
-CASSANDRA_HOSTS = [config('CASSANDRA_HOST', default='cassandra')]
+CASSANDRA_HOSTS = [config('CASSANDRA_HOST', default='viberchat_cassandra')]
 CASSANDRA_KEYSPACE = 'viberchat'
 
 # Redis settings for caching

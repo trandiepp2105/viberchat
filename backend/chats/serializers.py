@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models_conversation import Conversation
+from .models import Conversation
 
 User = get_user_model()
 
@@ -17,9 +17,8 @@ class ConversationSerializer(serializers.ModelSerializer):
         model = Conversation
         fields = ['id', 'name', 'is_group', 'is_direct', 'participants', 
                  'created_at', 'updated_at', 'direct_participants', 'last_message']
-    
     def get_last_message(self, obj):
-        from .cassandra_models_conversation import ChatMessage
+        from .cassandra_models import ChatMessage
         import uuid
         
         try:
@@ -34,8 +33,10 @@ class ConversationSerializer(serializers.ModelSerializer):
                     'id': str(message.message_id),
                     'text': message.text,
                     'sender_id': str(message.sender_id),
-                    'timestamp': message.timestamp.isoformat(),
-                    'is_read': message.is_read
+                    'timestamp': message.message_timestamp.isoformat(),
+                    'is_read': message.is_read,
+                    'is_pinned': getattr(message, 'is_pinned', False),
+                    'has_attachment': getattr(message, 'has_attachment', False)
                 }
         except Exception as e:
             print(f"Error getting last message: {str(e)}")
@@ -54,3 +55,14 @@ class MessageSerializer(serializers.Serializer):
     edited_at = serializers.DateTimeField(allow_null=True)
     is_deleted = serializers.BooleanField()
     deleted_at = serializers.DateTimeField(allow_null=True)
+    is_pinned = serializers.BooleanField(required=False, default=False)
+    pinned_at = serializers.DateTimeField(allow_null=True, required=False)
+    pinned_by = serializers.UUIDField(allow_null=True, required=False)
+    is_self = serializers.SerializerMethodField()
+    
+    def get_is_self(self, obj):
+        """Determine if the message was sent by the current user"""
+        request = self.context.get('request')
+        if request and hasattr(request, 'user'):
+            return str(obj['sender_id']) == str(request.user.id)
+        return False
