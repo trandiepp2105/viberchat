@@ -23,108 +23,116 @@ This is a real-time chat website that allows users to communicate instantly usin
 | API Communication   | REST API + WebSocket  |
 | Data Format         | JSON                  |
 
-## 🧱 Cassandra Schema Example (schema.cql)
+## 🚀 Getting Started (Local Development)
 
-```sql
-CREATE KEYSPACE IF NOT EXISTS chatapp
-WITH REPLICATION = { 'class': 'SimpleStrategy', 'replication_factor': 1 };
+These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 
-USE chatapp;
+### Prerequisites
 
-CREATE TABLE IF NOT EXISTS messages (
-    conversation_id text,
-    timestamp timestamp,
-    sender_id text,
-    receiver_id text,
-    content text,
-    PRIMARY KEY ((conversation_id), timestamp)
-) WITH CLUSTERING ORDER BY (timestamp ASC);
-```
+- Git
+- Docker & Docker Compose
+- Node.js & npm/yarn (if you intend to run frontend/admin outside Docker for development or manage dependencies)
+- Python & pip (if you intend to run backend outside Docker for development)
 
-## 📦 Installation Guide
+### Installation with Docker
 
-### 1. Requirements
+1.  **Clone the repository:**
 
-- Node.js >= 18.x
-- Apache Cassandra installed (or use Docker)
-- npm or yarn
-- Browser (Chrome, Firefox, etc.)
+    ```bash
+    git clone https://github.com/trandiepp2105/viberchat.git
+    cd viberchat
+    ```
 
----
+2.  **Configure Environment Variables:**
+    You will need to create `.env` files for the backend, frontend, and admin panel.
+    **Do not commit your actual `.env` files with sensitive credentials.**
 
-### 2. Clone the Repository
+    - **Backend (`.env`):**
+      Create this file at the same level as the docker-compose.yml file.
+      For local development, it should look something like this (adjust paths and service names according to your `docker-compose.yml`):
 
-```bash
-git clone https://github.com/your-username/chat-app.git
-cd chat-app
-```
+      ```env
+      DJANGO_SECRET_KEY=your_strong_local_secret_key # Change this!
+      DJANGO_DEBUG=True
 
----
+      # =======================================
+      # URLS & ALLOWED HOSTS (Local Development)
+      # =======================================
+      # For local Docker, these might not be strictly needed if services communicate via Docker network
+      # Or can be set to localhost for services exposed to the host machine
+      APP_ORIGIN=http://localhost:8000
+      FRONTEND_ORIGIN=http://localhost:3000 # Adjust port if your local frontend runs elsewhere
+      FRONTEND_ACCESS_URL=http://localhost:3000/ # For VNPay return, etc.
+      DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,backend,viberchat_backend # 'backend' or 'viberchat_backend' if that's the service name
 
-### 3. Backend Setup
+      # =======================================
+      # MYSQL CONFIGURATION
+      # =======================================
+      MYSQL_HOST=viberchat_mysql # Docker service name for MySQL
+      MYSQL_PORT=3309             # MySQL port INSIDE its container
+      MYSQL_ROOT_PASSWORD=your_mysql_root_password_local
+      MYSQL_USER=trandiep
+      MYSQL_PASSWORD=your_local_db_password # Change for local dev, DO NOT use production password
+      MYSQL_DATABASE=viberchat
 
-```bash
-cd backend
-npm install
-```
+      # =======================================
+      # REDIS CONFIGURATION
+      # =======================================
+      REDIS_HOST=viberchat_redis # Docker service name for Redis
+      REDIS_CACHE_URL=redis://${REDIS_HOST}:6379/1
 
-Create a `.env` file inside `backend/` and add:
+      # =======================================
+      # CELERY CONFIGURATION
+      # =======================================
+      CELERY_BROKER_URL=redis://${REDIS_HOST}:6379/0
+      CELERY_RESULT_BACKEND=redis://${REDIS_HOST}:6379/0
 
-```env
-PORT=5000
-JWT_SECRET=your_jwt_secret
-CASSANDRA_CONTACT_POINTS=127.0.0.1
-CASSANDRA_KEYSPACE=chatapp
-```
+      # =======================================
+      # EMAIL CONFIGURATION (Use a local mail catcher like MailHog for dev, or your test Gmail)
+      # =======================================
+      EMAIL_HOST=smtp.gmail.com # Or your local mail server (e.g., mailhog)
+      EMAIL_PORT=587            # Or 1025 for MailHog
+      EMAIL_USE_TLS=True
+      EMAIL_HOST_USER=your_test_email@gmail.com
+      EMAIL_HOST_PASSWORD=your_app_password_or_test_password # For Gmail, use an App Password
 
----
+      # =======================================
+      # JWT TOKEN LIFETIMES
+      # =======================================
+      ACCESS_TOKEN_LIFETIME_HOURS=5
+      REFRESH_TOKEN_LIFETIME_DAYS=1
 
-### 4. Frontend Setup
+      # =======================================
+      # ADMIN USER CREDENTIALS (For initial setup script if any, otherwise created via createsuperuser)
+      # =======================================
+      ADMIN_EMAIL="admin_local@example.com"
+      ADMIN_PASSWORD="adminlocalpassword"
+      ```
 
-```bash
-cd ../frontend
-npm install
-```
+    - **Frontend (`frontend/.env`):**
+      Create this file in your `frontend` directory. Copy from `frontend/.env.example` if available.
 
----
+      ```env
+      REACT_APP_API_URL=http://localhost:8000/api # URL of your Django backend API for local development
+      # For production, this might be REACT_APP_API_URL=http://20.198.225.85/api (or via Nginx)
 
-## ▶️ Running the App
+      # Example based on your provided production values, adjust for local if needed:
+      # REACT_APP_SERVER_HOST=localhost
+      # REACT_APP_SERVER_PORT=8000
+      ```
+3.  **Build and Run with Docker Compose:**
+    From the root directory of the project (where `docker-compose.yml` is located):
 
-### Start Cassandra
+    ```bash
+    docker-compose up --build -d
+    ```
 
-Make sure Cassandra is running, either:
-
-- Directly:
-  ```bash
-  cassandra -f
-  ```
-- Or with Docker:
-  ```bash
-  docker run --name cassandra -p 9042:9042 -d cassandra
-  ```
-
----
-
-### Start Backend
-
-```bash
-cd backend
-node server.js
-```
-
----
-
-### Start Frontend
-
-```bash
-cd frontend
-npm start
-```
-
-Open your browser at [http://localhost:3000](http://localhost:3000)
-
----
-
+    - `--build`: Forces a rebuild of the images if they've changed.
+    - `-d`: Runs containers in detached mode.
+4.  **Access the application:**
+    The ports depend on your `docker-compose.yml` configuration for port mapping. Common defaults:
+    - **Frontend:** `http://localhost:3000` (or the port you've mapped, e.g., `8081`)
+    - **Backend API:** `http://localhost:8000` (or the port you've mapped)
 ## 📝 Notes
 
 - Messages are stored in Cassandra using a partition key based on `conversation_id` for efficient retrieval.
@@ -146,8 +154,6 @@ Open your browser at [http://localhost:3000](http://localhost:3000)
 - [Cassandra Documentation](https://cassandra.apache.org/doc/latest/)
 - [Socket.IO Docs](https://socket.io/)
 - [React.js Official Site](https://reactjs.org/)
-- [Express.js](https://expressjs.com/)
-
 ---
 
 ## 🤝 Contributing
